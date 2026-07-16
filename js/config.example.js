@@ -1,14 +1,18 @@
 /**
- * Copy to js/config.js and fill in your Supabase project values.
- * Get these from: Supabase Dashboard → Project Settings → API
+ * Copy to js/config.js and fill in your Firebase project values.
+ * Get these from: Firebase Console → Project Settings → General → Your apps (Web)
  *
- * Enable Google sign-in: Authentication → Providers → Google
- * Redirect URLs must include your app origin, e.g.:
- *   http://localhost:4173
- *   https://your-user.github.io/reading-thai/
+ * Enable Google sign-in: Firebase Console → Authentication → Sign-in method → Google
+ * Authorized domains must include your app origin, e.g.:
+ *   localhost
+ *   drakemor.github.io
  */
 window.SYNC_CONFIG = {
   enabled: true,
-  supabaseUrl: 'https://YOUR_PROJECT.supabase.co',
-  supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY',
+  firebase: {
+    apiKey: 'YOUR_API_KEY',
+    authDomain: 'YOUR_PROJECT.firebaseapp.com',
+    projectId: 'YOUR_PROJECT_ID',
+    appId: 'YOUR_APP_ID'
+  }
 };

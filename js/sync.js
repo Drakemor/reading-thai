@@ -1,12 +1,14 @@
 /**
- * Google sign-in + cloud progress sync via Supabase.
+ * Google sign-in + cloud progress sync via Firebase (Auth + Firestore).
  * Offline-first: localStorage remains the source of truth; cloud is debounced backup.
  */
 (function () {
   const META_KEY = 'thaiReadingQuestSyncMeta';
   const UPLOAD_DEBOUNCE_MS = 2000;
 
-  let client = null;
+  let app = null;
+  let auth = null;
+  let db = null;
   let user = null;
   let uploadTimer = null;
   let listeners = [];
@@ -19,7 +21,7 @@
 
   function isEnabled() {
     const cfg = window.SYNC_CONFIG;
-    return !!(cfg && cfg.enabled && cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
+    return !!(cfg && cfg.enabled && cfg.firebase && window.firebase && firebase.app);
   }
 
   function notify() {
@@ -174,35 +176,34 @@
   }
 
   async function fetchRemoteProgress() {
-    if (!client || !user) return null;
-    const { data, error } = await client
-      .from('user_progress')
-      .select('state, updated_at')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    if (error) {
-      console.warn('[CloudSync] fetch failed', error.message);
+    if (!db || !user) return null;
+    try {
+      const docRef = db.collection('user_progress').doc(user.uid);
+      const snap = await docRef.get();
+      if (!snap.exists) return null;
+      const data = snap.data();
+      return { state: data.state, updatedAt: data.updatedAt };
+    } catch (e) {
+      console.warn('[CloudSync] fetch failed', e.message);
       return null;
     }
-    if (!data) return null;
-    return { state: data.state, updatedAt: data.updated_at };
   }
 
   async function uploadState(stateObj) {
-    if (!client || !user || !stateObj) return { ok: false };
+    if (!db || !user || !stateObj) return { ok: false };
     const updatedAt = new Date().toISOString();
-    const { error } = await client.from('user_progress').upsert({
-      user_id: user.id,
-      state: stateObj,
-      updated_at: updatedAt,
-    }, { onConflict: 'user_id' });
-    if (error) {
-      console.warn('[CloudSync] upload failed', error.message);
-      saveMeta({ ...loadMeta(), pendingUpload: true, lastError: error.message });
-      return { ok: false, error };
+    try {
+      await db.collection('user_progress').doc(user.uid).set({
+        state: stateObj,
+        updatedAt,
+      }, { merge: true });
+      saveMeta({ ...loadMeta(), pendingUpload: false, lastSyncedAt: updatedAt, remoteUpdatedAt: updatedAt, lastError: null });
+      return { ok: true, updatedAt };
+    } catch (e) {
+      console.warn('[CloudSync] upload failed', e.message);
+      saveMeta({ ...loadMeta(), pendingUpload: true, lastError: e.message });
+      return { ok: false, error: e };
     }
-    saveMeta({ ...loadMeta(), pendingUpload: false, lastSyncedAt: updatedAt, remoteUpdatedAt: updatedAt, lastError: null });
-    return { ok: true, updatedAt };
   }
 
   async function syncNow(stateObj) {
@@ -232,22 +233,20 @@
     hooks = { ...hooks, ...(options || {}) };
     if (!isEnabled()) return false;
 
-    client = window.supabase.createClient(
-      window.SYNC_CONFIG.supabaseUrl,
-      window.SYNC_CONFIG.supabaseAnonKey,
-      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-    );
+    const cfg = window.SYNC_CONFIG.firebase;
+    app = firebase.initializeApp(cfg);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    // Optional: enable local cache (still writes to our own localStorage too)
+    try { await db.enablePersistence({ synchronizeTabs: true }); } catch (_) {}
 
-    client.auth.onAuthStateChange(async (event, session) => {
-      user = session?.user ?? null;
-      if (event === 'SIGNED_IN') {
-        await syncNow(readLocalState());
-      }
+    auth.onAuthStateChanged(async (u) => {
+      user = u || null;
+      if (user) await syncNow(readLocalState());
       notify();
     });
 
-    const { data: { session } } = await client.auth.getSession();
-    user = session?.user ?? null;
+    user = auth.currentUser || null;
     if (user) await syncNow(readLocalState());
 
     const meta = loadMeta();
@@ -260,20 +259,24 @@
   }
 
   async function signInWithGoogle() {
-    if (!client) throw new Error('Cloud sync is not configured');
-    const redirectTo = window.location.origin + window.location.pathname;
-    const { error } = await client.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    });
-    if (error) throw error;
+    if (!auth) throw new Error('Cloud sync is not configured');
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      // Prefer popup for GitHub Pages; redirect fallback if blocked
+      await auth.signInWithPopup(provider);
+    } catch (e) {
+      if (e && String(e.code || '').includes('popup')) {
+        await auth.signInWithRedirect(provider);
+        return;
+      }
+      throw e;
+    }
   }
 
   async function signOut() {
-    if (!client) return;
+    if (!auth) return;
     clearTimeout(uploadTimer);
-    const { error } = await client.auth.signOut();
-    if (error) throw error;
+    await auth.signOut();
     user = null;
     notify();
   }
@@ -292,7 +295,7 @@
       enabled: isEnabled(),
       signedIn: isSignedIn(),
       email: user?.email || null,
-      name: user?.user_metadata?.full_name || user?.user_metadata?.name || null,
+      name: user?.displayName || null,
       lastSyncedAt: meta.lastSyncedAt || null,
       pendingUpload: !!meta.pendingUpload,
       lastError: meta.lastError || null,

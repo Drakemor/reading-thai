@@ -1,9 +1,13 @@
 /**
- * Cloud sync configuration. Copy from config.example.js and set your Supabase values.
+ * Cloud sync configuration. Copy from config.example.js and set your Firebase values.
  * When disabled or empty, the app works offline with localStorage only.
  */
 window.SYNC_CONFIG = {
   enabled: false,
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  firebase: {
+    apiKey: '',
+    authDomain: '',
+    projectId: '',
+    appId: ''
+  }
 };
