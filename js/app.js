@@ -38,7 +38,7 @@ let selectedOptionIdx = 0;
 let lessonSlideIdx = 0;
 let lessonSlides = null;
 let navBtnIdx = 0;
-let animCtx = { slideDir: 0 };
+let animCtx = { slideDir: 0, timerId: null };
 
 function loadState() {
   try {
@@ -86,7 +86,10 @@ function renderWordAllFonts(thai, sizeClass) {
 }
 
 function normRoman(s) {
-  return s.toLowerCase().trim().replace(/\s+/g,' ').replace(/-/g,'');
+  // Normalize input and canonical romanizations to letters only (no spaces/punct/symbols)
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
 }
 function checkRoman(input, word) {
   const n = normRoman(input);
@@ -185,8 +188,9 @@ function getNewLessonWords(lesson, known) {
 function pickReadingType(idx) {
   const roll = idx % 10;
   if (roll < 5) return 'type_roman';
+  // bias slightly toward MCQ sometimes
   if (roll < 8) return 'choose_pron';
-  return 'build_syllable';
+  return 'type_roman';
 }
 
 function buildReadingQuestion(type, word, wordPool, font) {
@@ -198,7 +202,8 @@ function buildReadingQuestion(type, word, wordPool, font) {
     return {type, word, font, options: opts, prompt:'Read this. Choose the pronunciation:'};
   }
   if (type === 'build_syllable') {
-    return {type, word, font, pieces: buildSyllablePieces(word), prompt:'Read this syllable. Type the pronunciation:'};
+    // Simplify: treat as normal typed reading without decomposition hints
+    return {type:'type_roman', word, font, prompt:'Read this. Type the pronunciation:'};
   }
   return null;
 }
@@ -493,7 +498,7 @@ function generateMixedQuestions(count, words, known, startIdx, usedKeys) {
   const typed = Math.ceil(count * 0.50), chooseP = Math.ceil(count * 0.30), ruleB = Math.ceil(count * 0.20);
   for (let i = 0; i < typed; i++) types.push('type_roman');
   for (let i = 0; i < chooseP; i++) types.push('choose_pron');
-  for (let i = 0; i < ruleB; i++) types.push(Math.random() > 0.5 ? 'build_syllable' : 'rule');
+  for (let i = 0; i < ruleB; i++) types.push('rule');
   while (types.length < count) types.push('type_roman');
   const qs = [];
   shuffle(types).slice(0, count).forEach((type, i) => {
@@ -849,6 +854,7 @@ function startTest(lessonId, isBoss) {
     questions,
     current: 0,
     score: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal,
     answers: [],
@@ -857,8 +863,10 @@ function startTest(lessonId, isBoss) {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1005,6 +1013,7 @@ function startSurvival() {
     current: 0,
     score: 0,
     survivalPoints: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal: SURVIVAL_HEARTS,
     answers: [],
@@ -1013,8 +1022,10 @@ function startSurvival() {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1202,9 +1213,13 @@ function optionBtnClass(opt, extra) {
 }
 
 function renderOptionButtons(options, qType) {
-  return options.map((o, i) =>
+  const btns = options.map((o, i) =>
     `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')} anim-opt" style="animation-delay:${i*45}ms" data-option-index="${i}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
-  ).join('');
+  );
+  if (options.length === 4) {
+    return `<div class="grid grid-cols-2 gap-3">${btns.join('')}</div>`;
+  }
+  return `<div class="space-y-3">${btns.join('')}</div>`;
 }
 
 function buildRuleQuestion(known, requiredRuleId) {
@@ -1273,6 +1288,7 @@ function failTestOutOfHearts() {
   testSession.died = true;
   testSession.passed = false;
   testSession.finished = false;
+  testSession.awaitingResults = false;
   saveState();
   ChipAudio.testDeath();
   flashScreen('death');
@@ -1295,7 +1311,8 @@ function continueAfterDeath() {
 }
 
 function submitAnswer(answer) {
-  if (!testSession || testSession.dying || testSession.finished) return;
+  if (!testSession || testSession.dying || testSession.finished || testSession.awaitingResults) return;
+  const startedAt = testSession.questionStartMs || Date.now();
   const q = testSession.questions[testSession.current];
   let correct = false;
   if (q.type === 'type_roman') correct = checkRoman(answer, q.word);
@@ -1305,6 +1322,13 @@ function submitAnswer(answer) {
 
   const font = resolveFont(q.font);
   recordAttempt(correct, font, q.type);
+  const durationMs = Math.max(0, Date.now() - startedAt);
+  // Simple speed bonus: very fast +3, fast +1
+  let speedBonus = 0;
+  if (correct) {
+    if (durationMs <= 1500) speedBonus = 3;
+    else if (durationMs <= 3000) speedBonus = 1;
+  }
   if (q.word && q.word.id && q.word.id !== 'rule') {
     const m = getMastery(q.word.id, font);
     if (correct) {
@@ -1318,6 +1342,10 @@ function submitAnswer(answer) {
   }
   if (correct) {
     testSession.score++;
+    if (speedBonus) {
+      testSession.speedBonusTotal = (testSession.speedBonusTotal || 0) + speedBonus;
+      state.totalScore = (state.totalScore || 0) + speedBonus;
+    }
     if (testSession.isSurvival && q.word) {
       testSession.survivalPoints = (testSession.survivalPoints || 0) + survivalPointsForWord(q.word);
     }
@@ -1328,10 +1356,12 @@ function submitAnswer(answer) {
   if (correct) ChipAudio.testCorrect();
   else ChipAudio.testWrong();
   flashScreen(correct ? 'success' : 'fail');
-  testSession.answers.push({q, answer, correct, font});
-  testSession.lastFeedback = {q, answer, correct, font};
+  testSession.answers.push({q, answer, correct, font, durationMs, speedBonus});
+  testSession.lastFeedback = {q, answer, correct, font, durationMs, speedBonus};
   testSession.current++;
   selectedOptionIdx = 0;
+  // Start timer for next question
+  testSession.questionStartMs = Date.now();
   saveState();
 
   if (testSession.isSurvival) {
@@ -1352,8 +1382,26 @@ function submitAnswer(answer) {
     return;
   }
 
-  if (testSession.current >= testSession.questions.length) finishTest();
-  else render();
+  // Hold on the last answer card before jumping to the summary
+  if (testSession.current >= testSession.questions.length) {
+    holdLastAnswerBeforeResults();
+    return;
+  }
+  render();
+}
+
+/** Pause on the final answer feedback so it is not skipped by the results screen. */
+function holdLastAnswerBeforeResults() {
+  if (!testSession || testSession.finished || testSession.dying) return;
+  testSession.awaitingResults = true;
+  navBtnIdx = 0;
+  render();
+}
+
+function continueToResults() {
+  if (!testSession?.awaitingResults) return;
+  testSession.awaitingResults = false;
+  finishTest();
 }
 
 function displayMeaning(word) {
@@ -1392,6 +1440,7 @@ function renderLastFeedback() {
     <div class="fb-body">
       <p class="fb-label">${label}${thai ? ` · ${thai}` : ''}</p>
       ${answerLine ? `<p class="fb-answer">${answerLine}</p>` : ''}
+      ${typeof ans.speedBonus === 'number' ? `<p class="text-xs text-amber-300">${ans.speedBonus>0?`+${ans.speedBonus} speed bonus`:''}${ans.durationMs!=null?`${ans.speedBonus>0?' · ':''}${(ans.durationMs/1000).toFixed(1)}s` : ''}</p>` : ''}
       ${meaning ? `<p class="fb-meaning">${meaning}</p>` : ''}
     </div>
   </div>`;
@@ -1429,6 +1478,7 @@ function finishTest() {
     state.lessonScores[testSession.lessonId] = Math.max(state.lessonScores[testSession.lessonId]||0, Math.round(pct*100));
   }
   saveState();
+  testSession.awaitingResults = false;
   testSession.finished = true;
   testSession.pct = pct;
   testSession.passed = passed;
@@ -1491,6 +1541,7 @@ function startReview() {
     questions: qs,
     current: 0,
     score: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal,
     answers: [],
@@ -1500,10 +1551,12 @@ function startReview() {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   selectedOptionIdx = 0;
   animCtx.slideDir = 0;
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1546,6 +1599,7 @@ function markWordKnown(wordId) {
 function render() {
   updateStreak();
   const app = document.getElementById('app');
+  if (!app) return;
   let html = '';
   switch(currentScreen) {
     case 'dashboard': html = renderDashboard(); break;
@@ -1604,6 +1658,18 @@ function focusTestUI() {
   if (currentScreen !== 'test' || !testSession) return;
   requestAnimationFrame(() => {
     if (testSession.dying) { focusKbButton(navBtnIdx || 0); return; }
+    // Start/update per-question timer
+    if (animCtx.timerId) { try { clearInterval(animCtx.timerId); } catch(e) {} animCtx.timerId = null; }
+    const timerEl = document.getElementById('q-timer');
+    if (timerEl && testSession.questionStartMs) {
+      const update = () => {
+        const ms = Math.max(0, Date.now() - (testSession.questionStartMs || Date.now()));
+        timerEl.textContent = (ms / 1000).toFixed(1);
+      };
+      update();
+      animCtx.timerId = setInterval(update, 100);
+    }
+    if (testSession.awaitingResults) { focusKbButton(navBtnIdx || 0); return; }
     if (testSession.finished) { focusKbButton(navBtnIdx); return; }
     const inp = document.getElementById('answer-input');
     if (inp) { inp.focus(); inp.select?.(); return; }
@@ -1882,6 +1948,23 @@ function renderTest() {
     </div>`;
   }
 
+  if (testSession.awaitingResults) {
+    navBtnIdx = 0;
+    const total = testSession.questions.length;
+    const ok = !!testSession.lastFeedback?.correct;
+    return `<div class="space-y-6 anim-screen text-center min-h-[60vh] flex flex-col justify-center" aria-live="polite">
+      ${testLesson ? renderProgressHeader(testLesson) : ''}
+      ${heartsHtml}
+      <p class="text-sm text-slate-400">Question ${total}/${total}</p>
+      <div class="h-2 bg-slate-800 rounded-full"><div class="h-2 bg-amber-400 rounded-full" style="width:100%"></div></div>
+      ${renderLastFeedback()}
+      <p class="text-slate-400">${ok ? 'Nice — last one done.' : 'Last one noted — review it, then see your score.'}</p>
+      <p class="text-slate-500 text-sm">Score so far: ${testSession.score}/${total}</p>
+      <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="continueToResults()">See results (Enter)</button>
+      <p class="text-xs text-slate-500">Press Enter to continue</p>
+    </div>`;
+  }
+
   if (testSession.finished) {
     if (testSession.isSurvival) return renderSurvivalResults();
     navBtnIdx = 0;
@@ -1895,6 +1978,7 @@ function renderTest() {
       <h1 class="anim-result-item text-3xl font-bold" style="animation-delay:80ms">${testSession.passed?'Passed!':'Keep practicing'}</h1>
       <p class="anim-score text-6xl font-bold ${testSession.passed?'text-emerald-400':'text-rose-400'}" style="animation-delay:140ms">${pct}%</p>
       <p class="anim-result-item text-slate-400" style="animation-delay:220ms">${testSession.score}/${testSession.questions.length} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}</p>
+      ${testSession.speedBonusTotal ? `<p class="anim-result-item text-amber-300" style="animation-delay:240ms">Speed bonus: +${testSession.speedBonusTotal}</p>` : ''}
       <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
       ${renderTestSummary()}
       ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
@@ -1917,29 +2001,30 @@ function renderTest() {
     content = `${renderRulePrompt(q.prompt, q.font)}
       <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
   } else if (q.type === 'build_syllable') {
-    content = `<p class="text-slate-400 mb-2">${formatPromptHtml(q.prompt, fc)}</p>
-      <p class="text-4xl text-center mb-2 ${fc} anim-thai">${q.pieces}</p>
-      <p class="text-6xl sm:text-7xl text-center mb-6 ${fc} anim-thai" style="animation-delay:60ms">${q.word.thai}</p>
+    // Render like normal typed reading without showing decomposition
+    content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">Read this. Type the pronunciation:</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   } else if (q.type === 'choose_pron') {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
-      <p class="text-slate-400 mb-4 anim-reveal" style="animation-delay:70ms">${q.prompt}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
   } else {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
-      <p class="text-slate-400 mb-4 anim-reveal" style="animation-delay:70ms">${q.prompt}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   }
 
   return `<div class="space-y-4" id="test-question">
     ${testLesson ? renderProgressHeader(testLesson) : ''}
     <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400 anim-reveal">
-      <span>${testSession.isSurvival ? `Q ${cur + 1}` : `Question ${cur+1}/${total}`}</span>
+      <span class="whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `Question ${cur+1}/${total}`}</span>
       ${heartsHtml}
       <span class="${scoreAnim}">${testSession.isSurvival
         ? `Points: ${testSession.survivalPoints || 0}`
         : `Score: ${testSession.score}`}</span>
     </div>
+    <div class="text-right text-xs text-slate-500" aria-live="off">Time: <span id="q-timer">0.0</span>s</div>
     <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
     ${renderLastFeedback()}
     <div class="anim-test-content">${content}</div>
@@ -2007,6 +2092,13 @@ function handleTestKey(e) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       continueAfterDeath();
+    }
+    return;
+  }
+  if (testSession.awaitingResults) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      continueToResults();
     }
     return;
   }
@@ -2091,6 +2183,7 @@ function demoQuizSession(opts = {}) {
     passed: !!opts.passed,
     died: !!opts.died,
     dying: !!opts.dying,
+    awaitingResults: !!opts.awaitingResults,
     wordPool: [word],
     usedKeys: new Set(),
   };

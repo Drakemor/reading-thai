@@ -29,9 +29,10 @@ const sandbox = {
   window: {},
   alert: () => {},
   ChipAudio: {
-    testStart() {}, testCorrect() {}, testWrong() {}, testDeath() {}, testPass() {},
+    testStart() {}, testCorrect() {}, testWrong() {}, testDeath() {}, testPass() {}, testFail() {},
+    lessonUnlock() {},
     uiSelect() {}, uiSlide() {}, uiReveal() {},
-    isMuted: () => false, getVolume: () => 0.5, setVolume() {}, setMuted() {},
+    isMuted: () => false, getVolume: () => 0.5, setVolume() {}, setMuted() {}, toggleMute() {},
   },
   requestAnimationFrame: fn => fn(),
   setTimeout: fn => fn(),
@@ -41,12 +42,15 @@ sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
 vm.runInContext(
-  dataCode + '\n' + appCode.replace(/\nrender\(\);\s*$/, '\n') + `
+  dataCode + '\n' + appCode.replace(/\n(?:render|bootstrap)\(\);\s*$/, '\n') + `
   globalThis.__TRQ = {
     WORDS, LESSONS, survivalPointsForWord, recordSurvivalScore, defaultState,
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
+    submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
     get state() { return state; },
     set state(v) { state = v; },
+    get testSession() { return testSession; },
+    set testSession(v) { testSession = v; },
   };
 `,
   sandbox
@@ -96,6 +100,41 @@ const filler = WORDS.filter(w => /\(syllable\)|\(particle\)/.test(w.meaning || '
 console.assert(filler.length === 0, 'no syllable fillers: ' + filler.map(w => w.id).join(','));
 const noEmoji = WORDS.filter(w => !w.emoji);
 console.assert(noEmoji.length === 0, 'all words have emoji');
+
+// Last answer must hold feedback before summary (not jump straight to finished)
+{
+  const word = WORDS.find(w => w.id === 'maa') || WORDS[0];
+  const q = {
+    type: 'type_roman',
+    word,
+    font: 'looped',
+    prompt: 'Read this. Type the pronunciation:',
+  };
+  sandbox.__TRQ.testSession = {
+    lessonId: 'basic-1',
+    isBoss: false,
+    questions: [q],
+    current: 0,
+    score: 0,
+    mistakes: 0,
+    heartsTotal: 1,
+    answers: [],
+    lastFeedback: null,
+    finished: false,
+    passed: false,
+    died: false,
+    dying: false,
+    awaitingResults: false,
+  };
+  sandbox.__TRQ.submitAnswer(word.romanizations[0]);
+  const sess = sandbox.__TRQ.testSession;
+  console.assert(sess.awaitingResults === true, 'last answer holds feedback');
+  console.assert(sess.finished === false, 'summary not yet shown');
+  console.assert(sess.lastFeedback && sess.lastFeedback.correct === true, 'last feedback recorded');
+  sandbox.__TRQ.continueToResults();
+  console.assert(sess.awaitingResults === false, 'hold cleared');
+  console.assert(sess.finished === true, 'results after continue');
+}
 
 console.log('OK — survival scoring + state shape');
 console.log({ pGaa, pMaak, pLong, pool: pool.length, qs: qs.length, best: sandbox.__TRQ.state.survivalBest });
