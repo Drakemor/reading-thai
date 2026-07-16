@@ -857,6 +857,7 @@ function startTest(lessonId, isBoss) {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   currentScreen = 'test';
   render();
@@ -1013,6 +1014,7 @@ function startSurvival() {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   currentScreen = 'test';
   render();
@@ -1273,6 +1275,7 @@ function failTestOutOfHearts() {
   testSession.died = true;
   testSession.passed = false;
   testSession.finished = false;
+  testSession.awaitingResults = false;
   saveState();
   ChipAudio.testDeath();
   flashScreen('death');
@@ -1295,7 +1298,7 @@ function continueAfterDeath() {
 }
 
 function submitAnswer(answer) {
-  if (!testSession || testSession.dying || testSession.finished) return;
+  if (!testSession || testSession.dying || testSession.finished || testSession.awaitingResults) return;
   const q = testSession.questions[testSession.current];
   let correct = false;
   if (q.type === 'type_roman') correct = checkRoman(answer, q.word);
@@ -1352,8 +1355,26 @@ function submitAnswer(answer) {
     return;
   }
 
-  if (testSession.current >= testSession.questions.length) finishTest();
-  else render();
+  // Hold on the last answer card before jumping to the summary
+  if (testSession.current >= testSession.questions.length) {
+    holdLastAnswerBeforeResults();
+    return;
+  }
+  render();
+}
+
+/** Pause on the final answer feedback so it is not skipped by the results screen. */
+function holdLastAnswerBeforeResults() {
+  if (!testSession || testSession.finished || testSession.dying) return;
+  testSession.awaitingResults = true;
+  navBtnIdx = 0;
+  render();
+}
+
+function continueToResults() {
+  if (!testSession?.awaitingResults) return;
+  testSession.awaitingResults = false;
+  finishTest();
 }
 
 function displayMeaning(word) {
@@ -1429,6 +1450,7 @@ function finishTest() {
     state.lessonScores[testSession.lessonId] = Math.max(state.lessonScores[testSession.lessonId]||0, Math.round(pct*100));
   }
   saveState();
+  testSession.awaitingResults = false;
   testSession.finished = true;
   testSession.pct = pct;
   testSession.passed = passed;
@@ -1500,6 +1522,7 @@ function startReview() {
     passed: false,
     died: false,
     dying: false,
+    awaitingResults: false,
   };
   selectedOptionIdx = 0;
   animCtx.slideDir = 0;
@@ -1546,6 +1569,7 @@ function markWordKnown(wordId) {
 function render() {
   updateStreak();
   const app = document.getElementById('app');
+  if (!app) return;
   let html = '';
   switch(currentScreen) {
     case 'dashboard': html = renderDashboard(); break;
@@ -1604,6 +1628,7 @@ function focusTestUI() {
   if (currentScreen !== 'test' || !testSession) return;
   requestAnimationFrame(() => {
     if (testSession.dying) { focusKbButton(navBtnIdx || 0); return; }
+    if (testSession.awaitingResults) { focusKbButton(navBtnIdx || 0); return; }
     if (testSession.finished) { focusKbButton(navBtnIdx); return; }
     const inp = document.getElementById('answer-input');
     if (inp) { inp.focus(); inp.select?.(); return; }
@@ -1882,6 +1907,23 @@ function renderTest() {
     </div>`;
   }
 
+  if (testSession.awaitingResults) {
+    navBtnIdx = 0;
+    const total = testSession.questions.length;
+    const ok = !!testSession.lastFeedback?.correct;
+    return `<div class="space-y-6 anim-screen text-center min-h-[60vh] flex flex-col justify-center" aria-live="polite">
+      ${testLesson ? renderProgressHeader(testLesson) : ''}
+      ${heartsHtml}
+      <p class="text-sm text-slate-400">Question ${total}/${total}</p>
+      <div class="h-2 bg-slate-800 rounded-full"><div class="h-2 bg-amber-400 rounded-full" style="width:100%"></div></div>
+      ${renderLastFeedback()}
+      <p class="text-slate-400">${ok ? 'Nice — last one done.' : 'Last one noted — review it, then see your score.'}</p>
+      <p class="text-slate-500 text-sm">Score so far: ${testSession.score}/${total}</p>
+      <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="continueToResults()">See results (Enter)</button>
+      <p class="text-xs text-slate-500">Press Enter to continue</p>
+    </div>`;
+  }
+
   if (testSession.finished) {
     if (testSession.isSurvival) return renderSurvivalResults();
     navBtnIdx = 0;
@@ -2010,6 +2052,13 @@ function handleTestKey(e) {
     }
     return;
   }
+  if (testSession.awaitingResults) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      continueToResults();
+    }
+    return;
+  }
   if (testSession.finished) {
     const btns = getKbButtons();
     if (e.key === 'ArrowDown') { e.preventDefault(); focusKbButton(navBtnIdx + 1); }
@@ -2091,6 +2140,7 @@ function demoQuizSession(opts = {}) {
     passed: !!opts.passed,
     died: !!opts.died,
     dying: !!opts.dying,
+    awaitingResults: !!opts.awaitingResults,
     wordPool: [word],
     usedKeys: new Set(),
   };
