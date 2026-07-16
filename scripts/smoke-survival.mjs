@@ -48,7 +48,7 @@ vm.runInContext(
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
     submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
     displayThaiText, formatMixedThai,
-    wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap,
+    wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap, wordNeedsMaiHanAkat,
     get state() { return state; },
     set state(v) { state = v; },
     get testSession() { return testSession; },
@@ -154,6 +154,31 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   console.assert(wordIsKnown(maak, before), 'มาก allowed before medium-9');
   console.assert(m9.introduces.rules.includes('final-sound-map'), 'medium-9 teaches final-sound-map');
   console.assert(/ร\/ล/.test(m9.teachingCards.map(c => c.body).join(' ')), 'medium-9 teaches final ร/ล → n');
+}
+
+// Mai han-akat (ั) must be taught before ฟัน / สวัสดี
+{
+  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsMaiHanAkat } = sandbox.__TRQ;
+  const faa = WORDS.find(w => w.id === 'faa');
+  const fuu = WORDS.find(w => w.id === 'fuu');
+  const sawasdee = WORDS.find(w => w.id === 'sawasdee');
+  const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  const before = getKnownBefore(a1);
+  console.assert(faa.thai === 'ฟัน' && faa.vowels.includes('ั'), 'ฟัน tagged with ั');
+  console.assert(!faa.rules.includes('implicit-o'), 'ฟัน is not implicit-o');
+  console.assert(wordNeedsMaiHanAkat(faa), 'ฟัน needs mai han-akat');
+  console.assert(wordNeedsMaiHanAkat(sawasdee), 'สวัสดี needs mai han-akat');
+  console.assert(!wordIsKnown(faa, before), 'ฟัน blocked before advanced-1');
+  console.assert(a1.introduces.vowels.includes('ั'), 'advanced-1 teaches ั');
+  console.assert(WORDS.find(w => w.id === 'fuu')?.thai === 'ฟู', 'ฟ example word is ฟู');
+  // ฟู only needs ฟ + ู — available once those consonants/vowels are known via advanced-1 progress
+  const during = {
+    consonants: new Set([...before.consonants, ...a1.introduces.consonants]),
+    vowels: new Set([...before.vowels, ...a1.introduces.vowels]),
+    rules: new Set([...before.rules, ...a1.introduces.rules]),
+  };
+  console.assert(wordIsKnown(faa, during), 'ฟัน allowed once ั taught');
+  console.assert(wordIsKnown(fuu, during), 'ฟู allowed in advanced-1');
 }
 
 // Thai display: carriers for combining marks + hyphen placeholders
