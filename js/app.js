@@ -78,11 +78,68 @@ function pickReadingFont(idx) {
 }
 
 function renderWordAllFonts(thai, sizeClass) {
-  const sz = sizeClass || 'text-5xl sm:text-6xl';
-  return `<div class="grid grid-cols-2 gap-3 text-center my-4 anim-stagger-tight">
-    <div><p class="text-xs text-slate-400 mb-2">Looped</p><p class="${sz} font-thai-looped anim-thai">${thai}</p></div>
-    <div><p class="text-xs text-slate-400 mb-2">Modern</p><p class="${sz} font-thai-modern anim-thai">${thai}</p></div>
+  const sz = sizeClass || 'thai-glyph-hero';
+  const shown = escHtml(displayThaiText(thai));
+  return `<div class="symbol-duo anim-stagger-tight">
+    <div><p class="symbol-duo-label">Looped</p><p class="${sz} font-thai-looped anim-thai" lang="th">${shown}</p></div>
+    <div><p class="symbol-duo-label">Modern</p><p class="${sz} font-thai-modern anim-thai" lang="th">${shown}</p></div>
   </div>`;
+}
+
+/** Dotted circle carrier so combining marks never float onto neighboring Latin text. */
+const THAI_CARRIER = '\u25CC';
+const THAI_COMBINING_RE = /[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/;
+const THAI_ONLY_COMBINING_RE = /^[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]+$/;
+
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Normalize a Thai symbol/token for display.
+ * - Hyphen placeholders in curriculum ids (เ-, โ-, เ-อ) become ◌ carriers.
+ * - Bare combining marks (tone marks, above/below vowels) get a leading ◌.
+ */
+function displayThaiText(raw) {
+  let s = String(raw ?? '');
+  if (!s) return '';
+  // Curriculum tokens use ASCII "-" as a consonant slot (เ-, เ-อ, โ-ะ patterns).
+  if (/[\u0E00-\u0E7F]/.test(s) && s.includes('-')) {
+    s = s.replace(/-/g, THAI_CARRIER);
+  }
+  if (THAI_ONLY_COMBINING_RE.test(s)) {
+    return THAI_CARRIER + s;
+  }
+  // Orphan combining mark at start of a string (e.g. after a bad split).
+  if (THAI_COMBINING_RE.test(s.charAt(0))) {
+    s = THAI_CARRIER + s;
+  }
+  // Combining mark immediately after a non-Thai / non-carrier character.
+  s = s.replace(/([^\u0E00-\u0E7F\u25CC])([\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]+)/g,
+    (_, before, marks) => before + THAI_CARRIER + marks);
+  return s;
+}
+
+function thaiGlyph(raw, extraClass, fontClass) {
+  const cls = ['thai-glyph', extraClass, fontClass].filter(Boolean).join(' ');
+  return `<span class="${cls}" lang="th">${escHtml(displayThaiText(raw))}</span>`;
+}
+
+/** Wrap Thai runs inside mixed Latin/Thai copy (lesson titles, teaching cards, prompts). */
+function formatMixedThai(text, glyphClass) {
+  const gClass = glyphClass || 'thai-glyph-title';
+  return String(text ?? '').replace(/([\u0E00-\u0E7F][\u0E00-\u0E7F\u25CC\-]*|[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]+)/g, (m) => {
+    return `<span class="thai-glyph ${gClass}" lang="th">${escHtml(displayThaiText(m))}</span>`;
+  });
+}
+
+function formatSymbolList(symbols) {
+  if (!symbols || !symbols.length) return '';
+  return `<div class="thai-inline-list">${symbols.map(s => thaiGlyph(s)).join('')}</div>`;
 }
 
 function normRoman(s) {
@@ -484,14 +541,21 @@ function remainingToLevels() {
   });
 }
 
-function renderProgressHeader(lesson) {
+function renderProgressHeader(lesson, { compact = false } = {}) {
   const L = lesson || LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
   const rem = remainingToLevels().map(r =>
     r.cleared ? `<span class="text-emerald-400">${r.label} ✓</span>` : `<span>${r.label} <strong class="text-slate-300">${r.left}</strong> left</span>`
   ).join('<span class="text-slate-600 mx-1.5">·</span>');
-  return `<div class="progress-head rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-2.5 mb-1">
+  if (compact) {
+    return `<div class="meta-row progress-head">
+      <span class="stat-inline">${lessonNumberLabel(L)}</span>
+      <span class="font-semibold text-slate-100">${formatMixedThai(L.title)}</span>
+      <span class="stat-inline capitalize">${L.level}${L.isBoss ? ' · Boss' : ''}</span>
+    </div>`;
+  }
+  return `<div class="progress-head panel panel-quiet">
     <div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-      <p class="text-sm font-semibold text-slate-100">${lessonNumberLabel(L)} · ${L.title}</p>
+      <p class="text-sm font-semibold text-slate-100">${lessonNumberLabel(L)} · ${formatMixedThai(L.title)}</p>
       <p class="text-xs text-slate-400 capitalize">${L.level}${L.isBoss ? ' · Boss' : ''}</p>
     </div>
     <p class="text-xs text-slate-500 mt-1">${rem}</p>
@@ -783,7 +847,14 @@ function goLesson(id) {
   animCtx.slideDir = 0; state.currentLessonId = id; lessonSlideIdx = 0; lessonSlides = null; lessonReveal = {}; navBtnIdx = 0; currentScreen = 'lesson'; saveState(); render();
 }
 
-function getKbButtons() { return [...document.querySelectorAll('.kb-btn')]; }
+function getKbButtons() {
+  return [...document.querySelectorAll('.kb-btn')].filter(el => {
+    const details = el.closest('details');
+    if (details && !details.open) return false;
+    const style = window.getComputedStyle(el);
+    return style.display !== 'none' && style.visibility !== 'hidden';
+  });
+}
 function focusKbButton(idx) {
   const btns = getKbButtons();
   if (!btns.length) return;
@@ -835,37 +906,39 @@ function buildLessonSlides(lesson) {
 
 function renderContrastSlide(pair) {
   if (!pair) return '';
+  const a = escHtml(displayThaiText(pair.a));
+  const b = escHtml(displayThaiText(pair.b));
   return `<div class="slide-body"><div class="contrast-slide anim-card">
     <p class="contrast-banner">Stop — these look alike</p>
-    <h2 class="contrast-title"><span class="font-thai-looped">${pair.a}</span> <span class="contrast-vs">vs</span> <span class="font-thai-looped">${pair.b}</span></h2>
-    <p class="contrast-tip">${pair.tip}</p>
+    <h2 class="contrast-title"><span class="thai-glyph thai-glyph-pair font-thai-looped" lang="th">${a}</span> <span class="contrast-vs">vs</span> <span class="thai-glyph thai-glyph-pair font-thai-looped" lang="th">${b}</span></h2>
+    <p class="contrast-tip">${formatMixedThai(pair.tip, 'thai-glyph')}</p>
     <div class="contrast-pair-grid">
       <div class="contrast-glyph-card contrast-glyph-a">
-        <p class="contrast-sound-label">${pair.aSound} sound</p>
-        <p class="contrast-glyph font-thai-looped anim-thai">${pair.a}</p>
-        <p class="contrast-glyph-sm font-thai-modern">${pair.a}</p>
-        <p class="contrast-meta">${pair.aName}</p>
-        <p class="contrast-roman">${pair.aSound}</p>
+        <p class="contrast-sound-label">${escHtml(pair.aSound)} sound</p>
+        <p class="contrast-glyph thai-glyph font-thai-looped anim-thai" lang="th">${a}</p>
+        <p class="contrast-glyph-sm thai-glyph font-thai-modern" lang="th">${a}</p>
+        <p class="contrast-meta">${formatMixedThai(pair.aName, 'thai-glyph')}</p>
+        <p class="contrast-roman">${escHtml(pair.aSound)}</p>
       </div>
       <div class="contrast-glyph-card contrast-glyph-b">
-        <p class="contrast-sound-label">${pair.bSound} sound</p>
-        <p class="contrast-glyph font-thai-looped anim-thai" style="animation-delay:.08s">${pair.b}</p>
-        <p class="contrast-glyph-sm font-thai-modern">${pair.b}</p>
-        <p class="contrast-meta">${pair.bName}</p>
-        <p class="contrast-roman">${pair.bSound}</p>
+        <p class="contrast-sound-label">${escHtml(pair.bSound)} sound</p>
+        <p class="contrast-glyph thai-glyph font-thai-looped anim-thai" lang="th" style="animation-delay:.08s">${b}</p>
+        <p class="contrast-glyph-sm thai-glyph font-thai-modern" lang="th">${b}</p>
+        <p class="contrast-meta">${formatMixedThai(pair.bName, 'thai-glyph')}</p>
+        <p class="contrast-roman">${escHtml(pair.bSound)}</p>
       </div>
     </div>
-    <p class="contrast-notch">${pair.tellApart || ''}</p>
+    <p class="contrast-notch">${formatMixedThai(pair.tellApart || '', 'thai-glyph')}</p>
     <div class="contrast-compare-grid">
       ${pair.compare.map(c => `
         <div class="contrast-compare-item">
-          <p class="contrast-compare-thai font-thai-looped">${c.thai}</p>
-          <p class="contrast-compare-thai-sm font-thai-modern">${c.thai}</p>
-          <p class="contrast-compare-roman">${c.roman}</p>
-          <p class="contrast-compare-note">${c.note}</p>
+          <p class="contrast-compare-thai thai-glyph font-thai-looped" lang="th">${escHtml(displayThaiText(c.thai))}</p>
+          <p class="contrast-compare-thai-sm thai-glyph font-thai-modern" lang="th">${escHtml(displayThaiText(c.thai))}</p>
+          <p class="contrast-compare-roman">${escHtml(c.roman)}</p>
+          <p class="contrast-compare-note">${formatMixedThai(c.note, 'thai-glyph')}</p>
         </div>`).join('')}
     </div>
-    <p class="contrast-footer">${pair.footer || ''}</p>
+    <p class="contrast-footer">${formatMixedThai(pair.footer || '', 'thai-glyph')}</p>
   </div></div>`;
 }
 
@@ -1123,20 +1196,23 @@ function renderSurvivalResults() {
   const best = state.survivalBest || 0;
   const isPB = pts >= best && pts > 0;
   const rows = (state.survivalScores || []).slice(0, SURVIVAL_TOP_N);
-  return `<div class="anim-screen anim-results anim-results-fail space-y-6 text-center min-h-[70vh] flex flex-col justify-center">
-    <h1 class="anim-result-item text-3xl font-bold" style="animation-delay:80ms">Survival over</h1>
-    <p class="anim-score text-6xl font-bold text-amber-400" style="animation-delay:140ms">${pts}</p>
-    <p class="anim-result-item text-slate-400" style="animation-delay:200ms">${testSession.score} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}${isPB ? ' · Personal best!' : ''}</p>
-    <p class="anim-result-item text-slate-400 text-sm" style="animation-delay:240ms">Best ever: <strong class="text-slate-200">${best}</strong></p>
-    <div class="anim-result-item bg-slate-900 border border-slate-800 rounded-2xl p-4 text-left space-y-2 max-h-56 overflow-y-auto" style="animation-delay:300ms">
-      <p class="text-sm font-semibold text-slate-300">Top runs</p>
-      ${rows.length ? rows.map((r, i) =>
-        `<div class="text-sm flex justify-between gap-3"><span class="text-slate-500">${i + 1}.</span><span class="text-slate-400">${formatSurvivalDate(r.date)}</span><strong class="text-amber-300">${r.score}</strong></div>`
-      ).join('') : '<p class="text-sm text-slate-500">No scores yet</p>'}
+  return `<div class="shell-frame anim-screen anim-results anim-results-fail">
+    <header class="shell-chrome shell-chrome-compact"><span class="stat-inline">Survival</span></header>
+    <div class="test-stage-block shell-stage text-center space-y-4">
+      <h1 class="anim-result-item text-3xl font-bold m-0" style="animation-delay:80ms">Survival over</h1>
+      <p class="anim-score text-6xl font-bold text-amber-400" style="animation-delay:140ms">${pts}</p>
+      <p class="anim-result-item text-slate-400" style="animation-delay:200ms">${testSession.score} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}${isPB ? ' · Personal best!' : ''}</p>
+      <p class="anim-result-item text-slate-400 text-sm" style="animation-delay:240ms">Best ever: <strong class="text-slate-200">${best}</strong></p>
+      <div class="anim-result-item panel text-left space-y-2 max-h-56 overflow-y-auto" style="animation-delay:300ms">
+        <p class="text-sm font-semibold text-slate-300">Top runs</p>
+        ${rows.length ? rows.map((r, i) =>
+          `<div class="text-sm flex justify-between gap-3"><span class="text-slate-500">${i + 1}.</span><span class="text-slate-400">${formatSurvivalDate(r.date)}</span><strong class="text-amber-300">${r.score}</strong></div>`
+        ).join('') : '<p class="text-sm text-slate-500">No scores yet</p>'}
+      </div>
+      <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:360ms" data-kb-index="0" onclick="startSurvival()">Play again (Enter)</button>
+      <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:420ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
+      <p class="anim-result-item hint-footer" style="animation-delay:460ms">↑ ↓ navigate · Enter select</p>
     </div>
-    <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:360ms" data-kb-index="0" onclick="startSurvival()">Play again (Enter)</button>
-    <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:420ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
-    <p class="anim-result-item text-xs text-slate-500" style="animation-delay:460ms">↑ ↓ navigate · Enter select</p>
   </div>`;
 }
 
@@ -1230,8 +1306,8 @@ function isThaiText(s) {
 
 function formatPromptHtml(text, fontClass) {
   const fc = fontClass || 'font-thai-looped';
-  return String(text).replace(/([\u0E00-\u0E7F]+)/g,
-    `<span class="prompt-thai ${fc}">$1</span>`);
+  return String(text).replace(/([\u0E00-\u0E7F][\u0E00-\u0E7F\u25CC\-]*|[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]+)/g, (m) =>
+    `<span class="prompt-thai thai-glyph ${fc}" lang="th">${escHtml(displayThaiText(m))}</span>`);
 }
 
 function renderRulePrompt(prompt, font) {
@@ -1243,7 +1319,7 @@ function renderRulePrompt(prompt, font) {
   if (m && m[1]) {
     const rest = (m[3] || '').trim() || 'is read as...';
     return `<div class="text-center mb-5 space-y-3">
-      <p class="prompt-thai-hero ${fc} anim-thai">${m[1]}</p>
+      <p class="prompt-thai-hero thai-glyph ${fc} anim-thai" lang="th">${escHtml(displayThaiText(m[1]))}</p>
       <p class="text-slate-400 text-lg">${formatPromptHtml(rest, fc)}</p>
     </div>`;
   }
@@ -1259,9 +1335,14 @@ function optionBtnClass(opt, extra) {
   return `test-option w-full py-4 bg-slate-800 rounded-2xl font-medium border-2 border-transparent ${thai ? 'test-option-thai font-thai-looped text-center' : 'text-left px-5 text-lg'} ${extra||''}`;
 }
 
+function renderOptionLabel(opt) {
+  if (!isThaiText(opt)) return escHtml(opt);
+  return `<span class="thai-glyph thai-glyph-pair font-thai-looped" lang="th">${escHtml(displayThaiText(opt))}</span>`;
+}
+
 function renderOptionButtons(options, qType) {
   const btns = options.map((o, i) =>
-    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')}" style="animation-delay:${i*45}ms" data-option-index="${i}" tabindex="${i===selectedOptionIdx?0:-1}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
+    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')}" style="animation-delay:${i*45}ms" data-option-index="${i}" tabindex="${i===selectedOptionIdx?0:-1}" onclick="submitAnswer('${escAttr(o)}')">${renderOptionLabel(o)}</button>`
   );
   if (options.length === 4) {
     return `<div class="grid grid-cols-2 gap-3" role="listbox" aria-label="Answer choices">${btns.join('')}</div>`;
@@ -1479,7 +1560,7 @@ function renderLastFeedback() {
     answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${primary}</strong>${alts.length ? ` <span class="${muted}">(also ${alts.join('/')})</span>` : ''}`;
   }
   const thai = word?.thai
-    ? `<span class="${getFontClass(ans.font)} fb-thai anim-thai">${word.thai}</span>`
+    ? `<span class="${getFontClass(ans.font)} fb-thai thai-glyph anim-thai" lang="th">${escHtml(displayThaiText(word.thai))}</span>`
     : '';
   const emoji = displayEmoji(word);
   const meaning = displayMeaning(word);
@@ -1502,7 +1583,9 @@ function renderTestSummary() {
     <p class="text-sm font-semibold text-slate-300">Missed (${wrong.length})</p>
     ${wrong.map(ans => {
       const w = ans.q.word && ans.q.word.id !== 'rule' ? ans.q.word : null;
-      const thai = w?.thai ? `<span class="${getFontClass(ans.font)}">${w.thai}</span>` : ans.q.prompt;
+      const thai = w?.thai
+        ? `<span class="${getFontClass(ans.font)} thai-glyph" lang="th">${escHtml(displayThaiText(w.thai))}</span>`
+        : formatMixedThai(ans.q.prompt, 'thai-glyph');
       const correct = ans.q.type === 'rule' ? ans.q.answer : (w?.romanizations?.join('/') || '—');
       const emoji = displayEmoji(w);
       const meaning = displayMeaning(w);
@@ -1755,20 +1838,18 @@ function renderCloudSyncSection() {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const s = CloudSync.getStatus();
   if (!s.enabled) {
-    return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
-      <h2 class="font-semibold">Cloud sync</h2>
-      <p class="text-slate-400 text-sm">Sign in with Google to save progress across devices. Copy <code class="text-slate-300">js/config.example.js</code> to <code class="text-slate-300">js/config.js</code> and add your Supabase keys.</p>
+    return `<div class="panel-body space-y-2">
+      <p class="text-slate-400 text-sm">Sign in with Google to save progress across devices. Copy <code class="text-slate-300">js/config.example.js</code> to <code class="text-slate-300">js/config.js</code> and add your Firebase keys.</p>
     </div>`;
   }
   if (s.signedIn) {
     const label = esc(s.name || s.email || 'Signed in');
     const synced = s.lastSyncedAt ? esc(new Date(s.lastSyncedAt).toLocaleString()) : 'not yet';
     const err = s.lastError ? `<p class="text-xs text-rose-400 mt-1">${esc(s.lastError)}</p>` : '';
-    return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+    return `<div class="panel-body space-y-3">
       <div class="flex justify-between items-start gap-3">
         <div>
-          <h2 class="font-semibold">Cloud sync</h2>
-          <p class="text-sm text-emerald-400 mt-1">Signed in as ${label}</p>
+          <p class="text-sm text-emerald-400">Signed in as ${label}</p>
           <p class="text-xs text-slate-500 mt-1">Last synced: ${synced}${s.pendingUpload ? ' · pending upload' : ''}</p>
           ${err}
         </div>
@@ -1777,9 +1858,8 @@ function renderCloudSyncSection() {
       <p class="text-slate-400 text-sm">Progress syncs automatically while you play.</p>
     </div>`;
   }
-  return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-    <h2 class="font-semibold">Cloud sync</h2>
-    <p class="text-slate-400 text-sm">Sign in with Google to back up progress and continue on another device. Local play still works without signing in.</p>
+  return `<div class="panel-body space-y-3">
+    <p class="text-slate-400 text-sm">Back up progress and continue on another device. Local play still works offline.</p>
     <button type="button" class="w-full py-3 bg-white text-slate-900 rounded-2xl font-semibold flex items-center justify-center gap-2" onclick="signInCloud()">
       <span aria-hidden="true">G</span> Sign in with Google
     </button>
@@ -1808,60 +1888,92 @@ async function signOutCloud() {
 function renderDashboard() {
   const wp = overallProgress(), wa = overallAccuracy();
   const nextLesson = LESSONS.find(l => state.unlockedLessons.includes(l.id) && !state.completedLessons.includes(l.id)) || LESSONS[0];
+  const doneCount = state.completedLessons.filter(id => !LESSONS.find(l => l.id === id)?.isBoss).length;
   return `
-  <div class="space-y-6 anim-screen anim-stagger">
-    <div class="text-center">
-      <h1 class="text-3xl font-bold text-slate-100">Thai Reading Quest</h1>
-      <p class="text-slate-400 mt-1">Learn to read Thai script</p>
-    </div>
-    ${renderCloudSyncSection()}
-    ${renderProgressHeader(nextLesson)}
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-      <div class="flex justify-between"><span class="text-slate-400">Level</span><span class="font-semibold">${getCurrentLevel()}</span></div>
-      <div class="flex justify-between"><span class="text-slate-400">Lessons completed</span><span>${state.completedLessons.filter(id=>!LESSONS.find(l=>l.id===id)?.isBoss).length}</span></div>
-      <div><div class="flex justify-between text-sm mb-1"><span class="text-slate-400">Progress</span><span>${wp}%</span></div>
-        <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${wp}%"></div></div></div>
-      <div class="flex justify-between"><span class="text-slate-400">Streak</span><span>🔥 ${state.streak||0} days</span></div>
-      <div class="flex justify-between"><span class="text-slate-400">Total score</span><span>${state.totalScore}</span></div>
-      <div class="flex justify-between"><span class="text-slate-400">Accuracy</span><span>${wa}%</span></div>
-      <div class="flex justify-between"><span class="text-slate-400">Weak words</span><span>${state.weakWords.length}</span></div>
-    </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
-      <h2 class="font-semibold mb-3">Font accuracy</h2>
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between"><span class="text-slate-400">Looped</span><span>${fontAccuracy('looped')}%</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Modern</span><span>${fontAccuracy('modern')}%</span></div>
+  <div class="shell-frame anim-screen">
+    <header class="shell-chrome">
+      <div class="hero-brand">
+        <h1>Thai Reading Quest</h1>
+        <p>Learn to read Thai script</p>
       </div>
-      <p class="text-slate-400 text-sm mt-3">Text appears in different typefaces — just read it.</p>
-    </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
-      <div class="flex justify-between items-center">
-        <h2 class="font-semibold">Sound</h2>
-        <span id="vol-label" class="text-sm text-slate-400">${ChipAudio.isMuted() ? 'Muted' : Math.round(ChipAudio.getVolume() * 100) + '%'}</span>
+      <div class="meta-row">
+        <span class="stat-inline">${getCurrentLevel()}</span>
+        <span class="stat-inline">${wp}% done</span>
+        <span class="stat-inline">🔥 ${state.streak || 0}d</span>
       </div>
-      <p class="text-slate-400 text-sm">8-bit chip beeps for answers, menus, and clears.</p>
-      <div class="flex items-center gap-3">
-        <input id="vol-slider" type="range" min="0" max="100" value="${Math.round(ChipAudio.getVolume() * 100)}"
-          class="flex-1 accent-amber-400" oninput="setAudioVolume(this.value)" aria-label="Volume">
-        <button type="button" id="mute-btn" class="px-3 py-2 bg-slate-800 rounded-xl text-sm border-2 border-transparent hover:border-amber-400" onclick="toggleAudioMute()">${ChipAudio.isMuted() ? 'Unmute' : 'Mute'}</button>
-      </div>
+    </header>
+
+    <div class="shell-grid shell-grid-dash">
+      <main class="panel space-y-5">
+        ${renderProgressHeader(nextLesson)}
+        <div>
+          <p class="text-slate-400 text-sm">Continue with</p>
+          <p class="text-2xl font-bold mt-1">${formatMixedThai(nextLesson.title)}</p>
+          <p class="text-slate-500 text-sm mt-1 capitalize">${nextLesson.level}${nextLesson.isBoss ? ' · Boss' : ''} · ${lessonNumberLabel(nextLesson)}</p>
+        </div>
+        <div class="cta-stack cta-stack-primary">
+          <button type="button" class="kb-btn w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold text-lg kb-selected" data-kb-index="0" onclick="goLesson('${nextLesson.id}')">Continue Learning</button>
+          <button type="button" class="kb-btn w-full py-4 bg-rose-900/80 text-rose-100 border border-rose-700/60 rounded-2xl font-semibold" data-kb-index="1" onclick="startSurvival()">Survival · 3 hearts${state.survivalBest ? ` · best ${state.survivalBest}` : ''}</button>
+        </div>
+        <div class="cta-stack" style="grid-template-columns:1fr 1fr">
+          <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="2" onclick="goScreen('review')">Weak Words</button>
+          <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="3" onclick="goScreen('lessons')">All Lessons</button>
+        </div>
+        <p class="hint-footer">↑ ↓ navigate · Enter select</p>
+      </main>
+
+      <aside class="dash-aside">
+        <details class="panel" open>
+          <summary>Progress</summary>
+          <div class="panel-body">
+            <div class="stat-list">
+              <div class="stat-list-row"><span>Level</span><strong>${getCurrentLevel()}</strong></div>
+              <div class="stat-list-row"><span>Lessons done</span><strong>${doneCount}</strong></div>
+              <div class="stat-list-row"><span>Score</span><strong>${state.totalScore}</strong></div>
+              <div class="stat-list-row"><span>Accuracy</span><strong>${wa}%</strong></div>
+              <div class="stat-list-row"><span>Weak words</span><strong>${state.weakWords.length}</strong></div>
+            </div>
+            <div class="mt-3">
+              <div class="flex justify-between text-sm mb-1"><span class="text-slate-400">Overall</span><span>${wp}%</span></div>
+              <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${wp}%"></div></div>
+            </div>
+            <div class="mt-3 space-y-1 text-sm">
+              <div class="stat-list-row"><span>Looped font</span><span>${fontAccuracy('looped')}%</span></div>
+              <div class="stat-list-row"><span>Modern font</span><span>${fontAccuracy('modern')}%</span></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="panel">
+          <summary>Sound</summary>
+          <div class="panel-body space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-sm text-slate-400">Chip beeps</span>
+              <span id="vol-label" class="text-sm text-slate-300">${ChipAudio.isMuted() ? 'Muted' : Math.round(ChipAudio.getVolume() * 100) + '%'}</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <input id="vol-slider" type="range" min="0" max="100" value="${Math.round(ChipAudio.getVolume() * 100)}"
+                class="flex-1 accent-amber-400" oninput="setAudioVolume(this.value)" aria-label="Volume">
+              <button type="button" id="mute-btn" class="px-3 py-2 bg-slate-800 rounded-xl text-sm border-2 border-transparent hover:border-amber-400" onclick="toggleAudioMute()">${ChipAudio.isMuted() ? 'Unmute' : 'Mute'}</button>
+            </div>
+          </div>
+        </details>
+
+        <details class="panel">
+          <summary>Cloud sync</summary>
+          ${renderCloudSyncSection()}
+        </details>
+
+        <details class="panel panel-quiet">
+          <summary>Data</summary>
+          <div class="panel-body flex gap-2">
+            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="4" onclick="exportProgress()">Export</button>
+            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="5" onclick="importProgress()">Import</button>
+            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-rose-400 rounded-xl text-sm" data-kb-index="6" onclick="resetProgress()">Reset</button>
+          </div>
+        </details>
+      </aside>
     </div>
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-      <p class="text-slate-400 text-sm">Next lesson</p>
-      <p class="font-semibold">${nextLesson.title}</p>
-    </div>
-    <div class="grid gap-3">
-      <button type="button" class="kb-btn w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold text-lg kb-selected" data-kb-index="0" onclick="goLesson('${nextLesson.id}')">Continue Learning</button>
-      <button type="button" class="kb-btn w-full py-3 bg-rose-900/80 text-rose-100 border border-rose-700/60 rounded-2xl font-semibold" data-kb-index="1" onclick="startSurvival()">Survival · 3 hearts${state.survivalBest ? ` · best ${state.survivalBest}` : ''}</button>
-      <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="2" onclick="goScreen('review')">Practice Weak Words</button>
-      <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="3" onclick="goScreen('lessons')">View All Lessons</button>
-    </div>
-    <div class="flex gap-3">
-      <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-400 rounded-xl text-sm" data-kb-index="4" onclick="exportProgress()">Export</button>
-      <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-400 rounded-xl text-sm" data-kb-index="5" onclick="importProgress()">Import</button>
-      <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-rose-400 rounded-xl text-sm" data-kb-index="6" onclick="resetProgress()">Reset</button>
-    </div>
-    <p class="text-xs text-slate-500 text-center">↑ ↓ navigate · Enter select</p>
   </div>`;
 }
 
@@ -1876,52 +1988,59 @@ function renderLessons() {
   const levels = ['basic','medium','advanced'];
   let kbIdx = 0;
   const cur = LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
-  let html = `<div class="space-y-6 anim-screen anim-stagger"><button type="button" class="kb-btn text-slate-400 text-sm kb-selected" data-kb-index="${kbIdx++}" onclick="goScreen('dashboard')">← Dashboard</button>${renderProgressHeader(cur)}<h1 class="text-2xl font-bold">All Lessons</h1>`;
+  let html = `<div class="shell-frame anim-screen">
+    <header class="shell-chrome shell-chrome-compact">
+      <button type="button" class="kb-btn text-slate-300 text-sm kb-selected px-2 py-1 rounded-lg" data-kb-index="${kbIdx++}" onclick="goScreen('dashboard')">← Dashboard</button>
+      <h1 class="text-lg font-bold m-0">All Lessons</h1>
+      ${renderProgressHeader(cur, { compact: true })}
+    </header>
+    <div class="shell-grid" style="gap:1.25rem">`;
   levels.forEach(lvl => {
     const lessons = LESSONS.filter(l => l.level === lvl);
-    html += `<div><h2 class="text-lg font-semibold capitalize mb-3 text-amber-400">${lvl}</h2><div class="space-y-3">`;
+    html += `<section class="lessons-level"><h2>${lvl}</h2><div class="shell-grid shell-grid-lessons">`;
     lessons.forEach(l => {
       const locked = !state.unlockedLessons.includes(l.id);
       const done = state.completedLessons.includes(l.id);
       const score = state.lessonScores[l.id];
-      if (locked) {
-        html += `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 opacity-50">
-          <div class="flex justify-between items-start">
-            <div><p class="font-semibold">${l.title}</p><p class="text-slate-400 text-sm">${l.isBoss?'Boss Test':'Lesson'}</p></div>
-            <span class="text-xs px-2 py-1 rounded-lg bg-slate-800 text-slate-500">🔒 Locked</span>
-          </div></div>`;
-      } else {
-        html += `<button type="button" class="kb-btn w-full text-left bg-slate-900 border border-slate-800 rounded-2xl p-4" data-kb-index="${kbIdx++}" onclick="goLesson('${l.id}')">
-          <div class="flex justify-between items-start">
-            <div><p class="font-semibold">${l.title}</p><p class="text-slate-400 text-sm">${l.isBoss?'Boss Test':'Lesson'}</p></div>
-            <span class="text-xs px-2 py-1 rounded-lg ${done?'bg-emerald-400/20 text-emerald-400':'bg-amber-400/20 text-amber-400'}">${done?'✓ Done':'Available'}</span>
+      const syms = [...l.introduces.consonants, ...l.introduces.vowels];
+      const badge = locked
+        ? '<span class="stat-inline">Locked</span>'
+        : `<span class="stat-inline ${done ? 'text-emerald-400' : 'text-amber-300'}">${done ? '✓ Done' : 'Open'}</span>`;
+      const body = `<div class="lesson-card-top">
+            <div>
+              <p class="font-semibold m-0">${formatMixedThai(l.title)}</p>
+              <p class="lesson-card-meta">${l.isBoss ? 'Boss Test' : 'Lesson'}${score != null ? ` · Best ${score}%` : ''}</p>
+            </div>
+            ${badge}
           </div>
-          ${l.introduces.consonants.length?`<p class="text-xs text-slate-400 mt-2">Consonants: ${l.introduces.consonants.join(' ')}</p>`:''}
-          ${l.introduces.vowels.length?`<p class="text-xs text-slate-400">Vowels: ${l.introduces.vowels.join(' ')}</p>`:''}
-          ${score?`<p class="text-xs text-emerald-400 mt-1">Best: ${score}%</p>`:''}
-        </button>`;
+          ${syms.length ? `<div class="lesson-card-syms">${syms.map(s => thaiGlyph(s)).join('')}</div>` : ''}`;
+      if (locked) {
+        html += `<div class="lesson-card is-locked" aria-disabled="true">${body}</div>`;
+      } else {
+        html += `<button type="button" class="kb-btn lesson-card" data-kb-index="${kbIdx++}" onclick="goLesson('${l.id}')">${body}</button>`;
       }
     });
-    html += `</div></div>`;
+    html += `</div></section>`;
   });
-  return html + '<p class="text-xs text-slate-500 text-center">↑ ↓ navigate · Enter open lesson · Esc dashboard</p></div>';
+  return html + `</div><p class="hint-footer">↑ ↓ navigate · Enter open · Esc dashboard</p></div>`;
 }
 
 function renderSymbolCard(sym) {
   const s = SYMBOLS.find(x => x.symbol === sym);
   if (!s) return '';
-  const exWord = s.exampleWordId ? WORDS.find(w=>w.id===s.exampleWordId) : null;
-  const typeLabel = s.type === 'consonant' ? 'consonant' : s.type === 'vowel' ? (s.role||'vowel') : s.type;
-  return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 anim-card">
-    <h3 class="font-semibold text-lg">${s.type === 'vowel' ? 'Thai vowel' : s.type === 'consonant' ? 'Thai letter' : 'Thai ' + s.type}: ${sym}</h3>
-    <div class="grid grid-cols-2 gap-3 text-center anim-stagger-tight">
-      <div><p class="text-xs text-slate-400 mb-1">Looped</p><p class="text-5xl font-thai-looped anim-thai">${sym}</p></div>
-      <div><p class="text-xs text-slate-400 mb-1">Modern</p><p class="text-5xl font-thai-modern anim-thai">${sym}</p></div>
+  const exWord = s.exampleWordId ? WORDS.find(w => w.id === s.exampleWordId) : null;
+  const typeLabel = s.type === 'consonant' ? 'consonant' : s.type === 'vowel' ? (s.role || 'vowel') : s.type;
+  const shown = escHtml(displayThaiText(sym));
+  return `<div class="panel teach-card space-y-4 anim-card">
+    <h3>${s.type === 'vowel' ? 'Thai vowel' : s.type === 'consonant' ? 'Thai letter' : 'Thai ' + s.type}: ${thaiGlyph(sym, 'thai-glyph-title')}</h3>
+    <div class="symbol-duo anim-stagger-tight">
+      <div><p class="symbol-duo-label">Looped</p><p class="thai-glyph-hero font-thai-looped anim-thai" lang="th">${shown}</p></div>
+      <div><p class="symbol-duo-label">Modern</p><p class="thai-glyph-hero font-thai-modern anim-thai" lang="th">${shown}</p></div>
     </div>
-    <div><span class="text-slate-400">Sound:</span> <strong>${s.sound}</strong></div>
-    <div><span class="text-slate-400">Role:</span> <strong>${typeLabel}</strong></div>
-    ${s.warning?`<p class="text-amber-400 text-sm">⚠ ${s.warning}</p>`:''}
-    ${exWord?`<div><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'text-3xl sm:text-4xl')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p></div>`:''}
+    <div><span class="text-slate-400">Sound:</span> <strong>${escHtml(s.sound)}</strong></div>
+    <div><span class="text-slate-400">Role:</span> <strong>${escHtml(typeLabel)}</strong></div>
+    ${s.warning ? `<p class="text-amber-400 text-sm">⚠ ${formatMixedThai(s.warning, 'thai-glyph')}</p>` : ''}
+    ${exWord ? `<div><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'thai-glyph-pair')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p></div>` : ''}
   </div>`;
 }
 
@@ -1936,44 +2055,58 @@ function renderLessonView() {
   const total = lessonSlides.length;
   const known = getKnownBefore(lesson);
   let body = '';
+  let stageClass = 'lesson-stage';
 
   if (slide.type === 'intro') {
-    const knownList = [...known.consonants, ...known.vowels].join(' ') || 'None yet';
-    const newList = [...lesson.introduces.consonants, ...lesson.introduces.vowels].join(' ') || '—';
+    const knownSyms = [...known.consonants, ...known.vowels];
+    const newSyms = [...lesson.introduces.consonants, ...lesson.introduces.vowels];
     const newRules = lesson.introduces.rules.join(', ');
-    body = `<div class="slide-body space-y-6 anim-stagger">
-      <div><p class="text-slate-400 text-sm uppercase tracking-wide">Lesson ${lessonSlideIdx + 1} / ${total}</p>
-      <h1 class="text-3xl font-bold mt-2">${lesson.title}</h1>
-      <span class="text-xs px-2 py-1 bg-slate-800 rounded-lg capitalize">${lesson.level}${lesson.isBoss ? ' · Boss' : ''}</span>
-      <p class="text-slate-400 text-sm mt-3">Every symbol is shown in looped and modern fonts from the start.</p></div>
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5"><p class="text-slate-400 text-sm">Known before</p>
-      <p class="font-thai-looped text-3xl mt-2">${knownList}</p></div>
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5"><p class="text-slate-400 text-sm">New today</p>
-      <p class="font-thai-looped text-3xl mt-2">${newList}</p>
-      ${newRules ? `<p class="text-slate-400 text-sm mt-2">Rules: ${newRules}</p>` : ''}</div>
+    stageClass += ' lesson-stage-wide';
+    body = `<div class="slide-body space-y-5 anim-stagger">
+      <div>
+        <p class="text-slate-400 text-sm uppercase tracking-wide">Lesson overview</p>
+        <h1 class="text-3xl font-bold mt-2">${formatMixedThai(lesson.title)}</h1>
+        <span class="intro-pill">${lesson.level}${lesson.isBoss ? ' · Boss' : ''}</span>
+        <p class="text-slate-400 text-sm mt-3">Every symbol is shown in looped and modern fonts from the start.</p>
+      </div>
+      <div class="shell-grid" style="grid-template-columns:repeat(auto-fit,minmax(14rem,1fr))">
+        <div class="panel panel-quiet">
+          <p class="text-slate-400 text-sm">Known before</p>
+          <div class="mt-2">${knownSyms.length ? formatSymbolList(knownSyms) : '<p class="text-slate-500">None yet</p>'}</div>
+        </div>
+        <div class="panel">
+          <p class="text-slate-400 text-sm">New today</p>
+          <div class="mt-2">${newSyms.length ? formatSymbolList(newSyms) : '<p class="text-slate-500">—</p>'}</div>
+          ${newRules ? `<p class="text-slate-400 text-sm mt-3">Rules: ${escHtml(newRules)}</p>` : ''}
+        </div>
+      </div>
     </div>`;
   } else if (slide.type === 'symbol') {
     body = `<div class="slide-body">${renderSymbolCard(slide.sym)}</div>`;
   } else if (slide.type === 'contrast') {
+    stageClass += ' lesson-stage-contrast';
     body = renderContrastSlide(CONFUSING_PAIRS.find(p => p.id === slide.pairId));
   } else if (slide.type === 'teaching') {
     const card = lesson.teachingCards[slide.index];
-    body = `<div class="slide-body"><div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 anim-card">
-      <h3 class="font-semibold text-xl mb-3">${card.title}</h3><p class="text-slate-300 text-lg leading-relaxed">${card.body}</p></div></div>`;
+    stageClass += ' lesson-stage-wide';
+    body = `<div class="slide-body"><div class="panel teach-card anim-card">
+      <h3>${formatMixedThai(card.title)}</h3>
+      <p>${formatMixedThai(card.body, 'thai-glyph')}</p>
+    </div></div>`;
   } else if (slide.type === 'example' || slide.type === 'practice') {
     const w = WORDS.find(x => x.id === slide.wordId);
     const rev = slide.type === 'practice' && lessonReveal[w.id];
-    body = `<div class="slide-body"><div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4 anim-card">
-      <p class="text-xs text-slate-400 uppercase">${slide.type === 'practice' ? 'Practice' : 'Example'}</p>
-      ${renderWordAllFonts(w.thai, 'text-4xl sm:text-5xl md:text-6xl')}
+    body = `<div class="slide-body"><div class="panel text-center space-y-4 anim-card">
+      <p class="text-xs text-slate-400 uppercase tracking-wide">${slide.type === 'practice' ? 'Practice' : 'Example'}</p>
+      ${renderWordAllFonts(w.thai, 'thai-glyph-hero')}
       ${rev || slide.type === 'example'
         ? `<div class="anim-reveal"><p class="text-xl">Pronunciation: <strong>${w.romanizations.join('/')}</strong></p>
-           <p class="text-slate-400">${w.explanation}</p>${slide.type === 'practice' ? `<div class="mt-2">${masteryDots(w.id)}</div>` : ''}</div>`
+           <p class="text-slate-400">${formatMixedThai(w.explanation, 'thai-glyph')}</p>${slide.type === 'practice' ? `<div class="mt-2">${masteryDots(w.id)}</div>` : ''}</div>`
         : `<p class="text-slate-400">Press Enter to reveal pronunciation</p>`}
     </div></div>`;
   } else if (slide.type === 'test') {
-    body = `<div class="slide-body"><div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-6 anim-card">
-      <h2 class="text-3xl font-bold">Ready for the test?</h2>
+    body = `<div class="slide-body"><div class="panel text-center space-y-6 anim-card">
+      <h2 class="text-3xl font-bold m-0">Ready for the test?</h2>
       <p class="text-slate-400">${testPreviewLine(lesson)}</p>
       <button type="button" id="slide-primary-btn" class="kb-btn kb-selected w-full py-5 bg-amber-400 text-slate-950 rounded-2xl font-bold text-xl" onclick="startTestFromLesson()">Start Test (Enter)</button>
     </div></div>`;
@@ -1984,15 +2117,15 @@ function renderLessonView() {
     : '→ or Enter next · ← back · Esc lessons';
 
   const slideAnim = animCtx.slideDir > 0 ? 'anim-slide-forward' : animCtx.slideDir < 0 ? 'anim-slide-back' : 'anim-slide-fade';
-  return `<div class="slide-shell space-y-4 anim-screen ${slideAnim}">
-    ${renderProgressHeader(lesson)}
-    <div class="flex justify-between items-center text-sm text-slate-400">
-      <button type="button" class="kb-btn text-slate-400 px-2 py-1 rounded-lg" onclick="goScreen('lessons')">← Lessons</button>
-      <span>Slide ${lessonSlideIdx + 1} / ${total}</span>
-    </div>
-    <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${(lessonSlideIdx + 1) / total * 100}%"></div></div>
-    ${body}
-    <p class="text-xs text-slate-500 text-center pb-2">${hint}</p>
+  return `<div class="shell-frame lesson-rail anim-screen ${slideAnim}">
+    <header class="shell-chrome shell-chrome-compact">
+      <button type="button" class="kb-btn text-slate-300 px-2 py-1 rounded-lg" onclick="goScreen('lessons')">← Lessons</button>
+      ${renderProgressHeader(lesson, { compact: true })}
+      <span class="stat-inline">Slide ${lessonSlideIdx + 1}/${total}</span>
+    </header>
+    <div class="h-1.5 bg-slate-800 rounded-full anim-progress"><div class="h-1.5 bg-amber-400 rounded-full" style="width:${(lessonSlideIdx + 1) / total * 100}%"></div></div>
+    <div class="${stageClass}">${body}</div>
+    <p class="hint-footer">${hint}</p>
   </div>`;
 }
 
@@ -2000,13 +2133,15 @@ function renderTest() {
   if (!testSession) return '';
   const testLesson = LESSONS.find(l => l.id === testSession.lessonId);
   const heartsHtml = renderHeartsBar(testSession.heartsTotal ?? 0, testSession.mistakes ?? 0);
+  const chromeLesson = testLesson
+    ? renderProgressHeader(testLesson, { compact: true })
+    : (testSession.isSurvival ? '<span class="stat-inline">Survival</span>' : '');
 
   if (testSession.dying) {
     const survivalDying = !!testSession.isSurvival;
     navBtnIdx = 0;
-    return `<div class="death-screen anim-screen" aria-live="assertive">
-      ${testLesson ? renderProgressHeader(testLesson) : (survivalDying ? '<p class="text-slate-400 text-sm">Survival</p>' : '')}
-      ${heartsHtml}
+    return `<div class="shell-frame death-screen anim-screen" aria-live="assertive">
+      <header class="shell-chrome shell-chrome-compact">${chromeLesson}${heartsHtml}</header>
       <div class="death-burst" aria-hidden="true"></div>
       <h1 class="death-title">Out of hearts!</h1>
       ${renderLastFeedback()}
@@ -2016,8 +2151,8 @@ function renderTest() {
       <p class="death-score">${survivalDying
         ? `Score ${testSession.survivalPoints || 0} · ${testSession.score} correct`
         : `${testSession.score}/${testSession.questions.length} before the wipe`}</p>
-      <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold mt-2" data-kb-index="0" onclick="continueAfterDeath()">${survivalDying ? 'See results (Enter)' : 'Try again (Enter)'}</button>
-      <p class="text-xs text-slate-500">Press Enter to continue</p>
+      <button type="button" id="primary-action" class="kb-btn kb-selected w-full max-w-md py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold mt-2" data-kb-index="0" onclick="continueAfterDeath()">${survivalDying ? 'See results (Enter)' : 'Try again (Enter)'}</button>
+      <p class="hint-footer">Press Enter to continue</p>
     </div>`;
   }
 
@@ -2025,16 +2160,19 @@ function renderTest() {
     navBtnIdx = 0;
     const total = testSession.questions.length;
     const ok = !!testSession.lastFeedback?.correct;
-    return `<div class="space-y-6 anim-screen text-center min-h-[60vh] flex flex-col justify-center" aria-live="polite">
-      ${testLesson ? renderProgressHeader(testLesson) : ''}
-      ${heartsHtml}
-      <p class="text-sm text-slate-400">Question ${total}/${total}</p>
-      <div class="h-2 bg-slate-800 rounded-full"><div class="h-2 bg-amber-400 rounded-full" style="width:100%"></div></div>
-      ${renderLastFeedback()}
-      <p class="text-slate-400">${ok ? 'Nice — last one done.' : 'Last one noted — review it, then see your score.'}</p>
-      <p class="text-slate-500 text-sm">Score so far: ${testSession.score}/${total}</p>
-      <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="continueToResults()">See results (Enter)</button>
-      <p class="text-xs text-slate-500">Press Enter to continue</p>
+    return `<div class="shell-frame anim-screen" aria-live="polite">
+      <header class="shell-chrome shell-chrome-compact test-chrome-bar">
+        ${chromeLesson}
+        ${heartsHtml}
+        <span class="stat-inline">${total}/${total}</span>
+      </header>
+      <div class="test-stage-block shell-stage text-center">
+        ${renderLastFeedback()}
+        <p class="text-slate-400">${ok ? 'Nice — last one done.' : 'Last one noted — review it, then see your score.'}</p>
+        <p class="text-slate-500 text-sm">Score so far: ${testSession.score}/${total}</p>
+        <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="continueToResults()">See results (Enter)</button>
+        <p class="hint-footer">Press Enter to continue</p>
+      </div>
     </div>`;
   }
 
@@ -2043,21 +2181,25 @@ function renderTest() {
     navBtnIdx = 0;
     const pct = Math.round(testSession.pct*100);
     const next = LESSONS.find(l => l.unlockAfter === testSession.lessonId);
-    const nextLabel = testSession.passed && next ? `Next: ${next.title}` : null;
+    const nextLabel = testSession.passed && next ? `Next: ${formatMixedThai(next.title)}` : null;
     const resultAnim = testSession.passed ? 'anim-results-pass' : 'anim-results-fail';
-    return `<div class="anim-screen anim-results ${resultAnim} space-y-6 text-center min-h-[70vh] flex flex-col justify-center">
-      ${testLesson ? renderProgressHeader(testLesson) : ''}
-      ${heartsHtml}
-      <h1 class="anim-result-item text-3xl font-bold" style="animation-delay:80ms">${testSession.passed?'Passed!':'Keep practicing'}</h1>
-      <p class="anim-score text-6xl font-bold ${testSession.passed?'text-emerald-400':'text-rose-400'}" style="animation-delay:140ms">${pct}%</p>
-      <p class="anim-result-item text-slate-400" style="animation-delay:220ms">${testSession.score}/${testSession.questions.length} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}</p>
-      ${testSession.speedBonusTotal ? `<p class="anim-result-item text-amber-300" style="animation-delay:240ms">Speed bonus: +${testSession.speedBonusTotal}</p>` : ''}
-      <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
-      ${renderTestSummary()}
-      ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
-      <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:420ms" data-kb-index="0" onclick="continueAfterTest()">${testSession.passed ? 'Next Lesson (Enter)' : 'Practice Again (Enter)'}</button>
-      <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:480ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
-      <p class="anim-result-item text-xs text-slate-500" style="animation-delay:520ms">Press Enter to continue · ↑ ↓ navigate</p>
+    return `<div class="shell-frame anim-screen anim-results ${resultAnim}">
+      <header class="shell-chrome shell-chrome-compact test-chrome-bar">
+        ${chromeLesson}
+        ${heartsHtml}
+      </header>
+      <div class="test-stage-block shell-stage text-center space-y-4">
+        <h1 class="anim-result-item text-3xl font-bold m-0" style="animation-delay:80ms">${testSession.passed?'Passed!':'Keep practicing'}</h1>
+        <p class="anim-score text-6xl font-bold ${testSession.passed?'text-emerald-400':'text-rose-400'}" style="animation-delay:140ms">${pct}%</p>
+        <p class="anim-result-item text-slate-400" style="animation-delay:220ms">${testSession.score}/${testSession.questions.length} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}</p>
+        ${testSession.speedBonusTotal ? `<p class="anim-result-item text-amber-300" style="animation-delay:240ms">Speed bonus: +${testSession.speedBonusTotal}</p>` : ''}
+        <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
+        ${renderTestSummary()}
+        ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
+        <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:420ms" data-kb-index="0" onclick="continueAfterTest()">${testSession.passed ? 'Next Lesson (Enter)' : 'Practice Again (Enter)'}</button>
+        <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:480ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
+        <p class="anim-result-item hint-footer" style="animation-delay:520ms">Press Enter to continue · ↑ ↓ navigate</p>
+      </div>
     </div>`;
   }
   const q = testSession.questions[testSession.current];
@@ -2069,39 +2211,42 @@ function renderTest() {
   const fc = getFontClass(q.font);
   const fb = testSession.lastFeedback;
   const scoreAnim = fb?.correct ? 'anim-score-bump' : fb && !fb.correct ? 'anim-score-dip' : '';
+  const thaiHero = (t) =>
+    `<p class="thai-glyph-hero text-center mb-4 ${fc} anim-thai" lang="th">${escHtml(displayThaiText(t))}</p>`;
 
   if (q.type === 'rule') {
     content = `${renderRulePrompt(q.prompt, q.font)}
       ${renderOptionButtons(q.options)}`;
   } else if (q.type === 'build_syllable') {
-    // Render like normal typed reading without showing decomposition
-    content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
+    content = `${thaiHero(q.word.thai)}
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">Read this. Type the pronunciation:</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   } else if (q.type === 'choose_pron') {
-    content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
+    content = `${thaiHero(q.word.thai)}
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       ${renderOptionButtons(q.options)}`;
   } else {
-    content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
+    content = `${thaiHero(q.word.thai)}
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   }
 
-  return `<div class="space-y-4" id="test-question">
-    ${testLesson ? renderProgressHeader(testLesson) : ''}
-    <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400 anim-reveal">
-      <span class="whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `Question ${cur+1}/${total}`}</span>
+  return `<div class="shell-frame" id="test-question">
+    <header class="shell-chrome shell-chrome-compact test-chrome-bar">
+      ${chromeLesson}
+      <span class="stat-inline whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `${cur + 1}/${total}`}</span>
       ${heartsHtml}
-      <span class="${scoreAnim}">${testSession.isSurvival
-        ? `Points: ${testSession.survivalPoints || 0}`
-        : `Score: ${testSession.score}`}</span>
+      <span class="stat-inline ${scoreAnim}">${testSession.isSurvival
+        ? `Pts ${testSession.survivalPoints || 0}`
+        : `Score ${testSession.score}`}</span>
+      <span class="stat-inline" aria-live="off"><span id="q-timer">0.0</span>s</span>
+    </header>
+    <div class="h-1.5 bg-slate-800 rounded-full anim-progress"><div class="h-1.5 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
+    <div class="test-stage-block shell-stage">
+      ${renderLastFeedback()}
+      <div class="anim-test-content">${content}</div>
+      <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
     </div>
-    <div class="text-right text-xs text-slate-500" aria-live="off">Time: <span id="q-timer">0.0</span>s</div>
-    <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
-    ${renderLastFeedback()}
-    <div class="anim-test-content">${content}</div>
-    <p class="text-xs text-slate-500 text-center anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
   </div>`;
 }
 
@@ -2113,23 +2258,27 @@ function renderReview() {
     return word && wordIsKnown(word, known);
   });
   const cur = LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
-  return `<div class="space-y-6 anim-screen anim-stagger">
-    <button type="button" class="text-slate-400 text-sm text-left" onclick="goScreen('dashboard')">← Dashboard (Esc)</button>
-    ${renderProgressHeader(cur)}
-    <h1 class="text-2xl font-bold">Review Weak Words</h1>
-    <p class="text-slate-400">${weak.length} weak words</p>
-    <div class="grid gap-3">
+  return `<div class="shell-frame anim-screen">
+    <header class="shell-chrome shell-chrome-compact">
+      <button type="button" class="kb-btn text-slate-300 text-sm px-2 py-1 rounded-lg" onclick="goScreen('dashboard')">← Dashboard</button>
+      <h1 class="text-lg font-bold m-0">Weak Words</h1>
+      ${renderProgressHeader(cur, { compact: true })}
+      <span class="stat-inline">${weak.length} words</span>
+    </header>
+    <div class="shell-stage shell-stage-wide space-y-4">
       <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="startReview()">Start Review (Enter)</button>
+      <div class="shell-grid shell-grid-lessons">
+        ${weak.slice(0, 20).map(w => {
+          const word = WORDS.find(x => x.id === w.id);
+          return word ? `<div class="panel space-y-2 anim-card">
+            ${renderWordAllFonts(word.thai, 'thai-glyph-pair')}
+            <div class="flex justify-end">
+              <button type="button" class="kb-btn text-xs px-2 py-1 bg-slate-800 rounded-lg text-emerald-400" onclick="markWordKnown('${w.id}')">Mark known</button>
+            </div></div>` : '';
+        }).join('')}
+      </div>
+      <p class="hint-footer">↑ ↓ navigate · Enter select · Esc dashboard</p>
     </div>
-    <div class="space-y-2">${weak.slice(0,20).map(w => {
-      const word = WORDS.find(x=>x.id===w.id);
-      return word ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 anim-card">
-        ${renderWordAllFonts(word.thai, 'text-2xl sm:text-3xl')}
-        <div class="flex justify-end">
-          <button type="button" class="kb-btn text-xs px-2 py-1 bg-slate-800 rounded-lg text-emerald-400" onclick="markWordKnown('${w.id}')">Mark known</button>
-        </div></div>` : '';
-    }).join('')}</div>
-    <p class="text-xs text-slate-500 text-center">↑ ↓ navigate · Enter select</p>
   </div>`;
 }
 

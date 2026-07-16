@@ -47,6 +47,7 @@ vm.runInContext(
     WORDS, LESSONS, survivalPointsForWord, recordSurvivalScore, defaultState,
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
     submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
+    displayThaiText, formatMixedThai,
     get state() { return state; },
     set state(v) { state = v; },
     get testSession() { return testSession; },
@@ -134,6 +135,21 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   sandbox.__TRQ.continueToResults();
   console.assert(sess.awaitingResults === false, 'hold cleared');
   console.assert(sess.finished === true, 'results after continue');
+}
+
+// Thai display: carriers for combining marks + hyphen placeholders
+{
+  const { displayThaiText, formatMixedThai } = sandbox.__TRQ;
+  const C = '\u25CC';
+  console.assert(displayThaiText('่') === C + '่', 'tone mark gets carrier');
+  console.assert(displayThaiText('้') === C + '้', 'mai tho gets carrier');
+  console.assert(displayThaiText('์') === C + '์', 'garan gets carrier');
+  console.assert(displayThaiText('เ-') === 'เ' + C, 'leading e uses carrier slot');
+  console.assert(displayThaiText('เ-อ') === 'เ' + C + 'อ', 'oe pattern uses carrier');
+  console.assert(displayThaiText('มาก') === 'มาก', 'full words unchanged');
+  const mixed = formatMixedThai('Vowel before consonant: เ-');
+  console.assert(mixed.includes(C), 'mixed title uses carrier for เ-');
+  console.assert(mixed.includes('thai-glyph'), 'mixed title wraps thai glyph');
 }
 
 console.log('OK — survival scoring + state shape');
