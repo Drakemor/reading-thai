@@ -301,7 +301,28 @@ body, .app-body{
 }
 .symbol-duo-label{font-size:0.7rem;color:var(--muted);margin-bottom:0.35rem;letter-spacing:0.06em;text-transform:uppercase}
 .teach-card h3{margin:0 0 0.65rem;font-size:1.25rem;font-weight:700}
-.teach-card p{margin:0;color:#cbd5e1;font-size:1.05rem;line-height:1.55}
+.teach-card .teach-copy{margin:0;color:#cbd5e1;font-size:1.05rem;line-height:1.55}
+/* Keep hero/pair sizes above any teach-card copy rules (specificity beat .teach-card p) */
+.symbol-duo .thai-glyph-hero,
+.teach-card .thai-glyph-hero{
+  display:block;
+  font-size:clamp(3.75rem, 14vw, 6.5rem);
+  line-height:1.2;
+  text-align:center;
+  font-weight:700;
+  color:#f8fafc;
+  margin:0;
+}
+.symbol-duo .thai-glyph-pair,
+.teach-card .thai-glyph-pair{
+  display:block;
+  font-size:clamp(3rem, 11vw, 5rem);
+  line-height:1.25;
+  text-align:center;
+  font-weight:700;
+  color:#f8fafc;
+  margin:0;
+}
 .intro-pill{
   display:inline-block;
   margin-top:0.5rem;
