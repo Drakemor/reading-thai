@@ -53,6 +53,7 @@ let DEMO_MODE = false;
 function saveState() {
   if (DEMO_MODE) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  if (window.CloudSync) CloudSync.scheduleUpload(state);
 }
 
 function updateStreak() {
@@ -1610,6 +1611,61 @@ function focusTestUI() {
   });
 }
 
+function renderCloudSyncSection() {
+  if (!window.CloudSync) return '';
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const s = CloudSync.getStatus();
+  if (!s.enabled) {
+    return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <h2 class="font-semibold">Cloud sync</h2>
+      <p class="text-slate-400 text-sm">Sign in with Google to save progress across devices. Copy <code class="text-slate-300">js/config.example.js</code> to <code class="text-slate-300">js/config.js</code> and add your Supabase keys.</p>
+    </div>`;
+  }
+  if (s.signedIn) {
+    const label = esc(s.name || s.email || 'Signed in');
+    const synced = s.lastSyncedAt ? esc(new Date(s.lastSyncedAt).toLocaleString()) : 'not yet';
+    const err = s.lastError ? `<p class="text-xs text-rose-400 mt-1">${esc(s.lastError)}</p>` : '';
+    return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+      <div class="flex justify-between items-start gap-3">
+        <div>
+          <h2 class="font-semibold">Cloud sync</h2>
+          <p class="text-sm text-emerald-400 mt-1">Signed in as ${label}</p>
+          <p class="text-xs text-slate-500 mt-1">Last synced: ${synced}${s.pendingUpload ? ' · pending upload' : ''}</p>
+          ${err}
+        </div>
+        <button type="button" class="px-3 py-2 bg-slate-800 rounded-xl text-sm shrink-0" onclick="signOutCloud()">Sign out</button>
+      </div>
+      <p class="text-slate-400 text-sm">Progress syncs automatically while you play.</p>
+    </div>`;
+  }
+  return `<div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+    <h2 class="font-semibold">Cloud sync</h2>
+    <p class="text-slate-400 text-sm">Sign in with Google to back up progress and continue on another device. Local play still works without signing in.</p>
+    <button type="button" class="w-full py-3 bg-white text-slate-900 rounded-2xl font-semibold flex items-center justify-center gap-2" onclick="signInCloud()">
+      <span aria-hidden="true">G</span> Sign in with Google
+    </button>
+  </div>`;
+}
+
+async function signInCloud() {
+  if (!window.CloudSync || !CloudSync.isEnabled()) return;
+  try {
+    await CloudSync.signInWithGoogle();
+  } catch (e) {
+    alert('Sign-in failed: ' + (e.message || e));
+  }
+}
+
+async function signOutCloud() {
+  if (!window.CloudSync) return;
+  try {
+    await CloudSync.signOut();
+    render();
+  } catch (e) {
+    alert('Sign-out failed: ' + (e.message || e));
+  }
+}
+
 function renderDashboard() {
   const wp = overallProgress(), wa = overallAccuracy();
   const nextLesson = LESSONS.find(l => state.unlockedLessons.includes(l.id) && !state.completedLessons.includes(l.id)) || LESSONS[0];
@@ -1619,6 +1675,7 @@ function renderDashboard() {
       <h1 class="text-3xl font-bold text-slate-100">Thai Reading Quest</h1>
       <p class="text-slate-400 mt-1">Learn to read Thai script</p>
     </div>
+    ${renderCloudSyncSection()}
     ${renderProgressHeader(nextLesson)}
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
       <div class="flex justify-between"><span class="text-slate-400">Level</span><span class="font-semibold">${getCurrentLevel()}</span></div>
@@ -2146,4 +2203,19 @@ function applyDemoFromQuery() {
 
 applyDemoFromQuery();
 attachKeyboard();
-render();
+
+async function bootstrap() {
+  if (window.CloudSync) {
+    CloudSync.addListener(() => {
+      if (currentScreen === 'dashboard' && document.getElementById('app')) render();
+    });
+    await CloudSync.init({
+      storageKey: STORAGE_KEY,
+      getDefaultState: defaultState,
+      onStateMerged: merged => { state = merged; },
+    });
+  }
+  if (document.getElementById('app')) render();
+}
+
+bootstrap();
