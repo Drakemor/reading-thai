@@ -48,7 +48,7 @@ vm.runInContext(
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
     submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
     displayThaiText, formatMixedThai,
-    wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap, wordNeedsMaiHanAkat,
+    wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap, wordNeedsMaiHanAkat, wordNeedsWVowelUa,
     get state() { return state; },
     set state(v) { state = v; },
     get testSession() { return testSession; },
