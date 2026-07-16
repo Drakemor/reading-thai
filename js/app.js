@@ -81,8 +81,8 @@ function renderWordAllFonts(thai, sizeClass) {
   const sz = sizeClass || 'thai-glyph-hero';
   const shown = escHtml(displayThaiText(thai));
   return `<div class="symbol-duo anim-stagger-tight">
-    <div><p class="symbol-duo-label">Looped</p><p class="${sz} font-thai-looped anim-thai" lang="th">${shown}</p></div>
-    <div><p class="symbol-duo-label">Modern</p><p class="${sz} font-thai-modern anim-thai" lang="th">${shown}</p></div>
+    <div class="symbol-card"><p class="symbol-duo-label">Looped</p><p class="${sz} font-thai-looped anim-thai" lang="th">${shown}</p></div>
+    <div class="symbol-card"><p class="symbol-duo-label">Modern</p><p class="${sz} font-thai-modern anim-thai" lang="th">${shown}</p></div>
   </div>`;
 }
 
@@ -2048,8 +2048,8 @@ function renderSymbolCard(sym) {
   return `<div class="panel teach-card space-y-4 anim-card">
     <h3>${s.type === 'vowel' ? 'Thai vowel' : s.type === 'consonant' ? 'Thai letter' : 'Thai ' + s.type}: ${thaiGlyph(sym, 'thai-glyph-title')}</h3>
     <div class="symbol-duo anim-stagger-tight">
-      <div><p class="symbol-duo-label">Looped</p><p class="thai-glyph-hero font-thai-looped anim-thai" lang="th">${shown}</p></div>
-      <div><p class="symbol-duo-label">Modern</p><p class="thai-glyph-hero font-thai-modern anim-thai" lang="th">${shown}</p></div>
+      <div class="symbol-card"><p class="symbol-duo-label">Looped</p><p class="thai-glyph-hero font-thai-looped anim-thai" lang="th">${shown}</p></div>
+      <div class="symbol-card"><p class="symbol-duo-label">Modern</p><p class="thai-glyph-hero font-thai-modern anim-thai" lang="th">${shown}</p></div>
     </div>
     <div><span class="text-slate-400">Sound:</span> <strong>${escHtml(s.sound)}</strong></div>
     <div><span class="text-slate-400">Role:</span> <strong>${escHtml(typeLabel)}</strong></div>
