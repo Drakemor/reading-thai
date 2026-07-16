@@ -63,6 +63,17 @@ const {
   getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
 } = sandbox.__TRQ;
 
+function seedCompletedBefore(lessonId) {
+  const target = sandbox.__TRQ.LESSONS.find(l => l.id === lessonId);
+  const done = sandbox.__TRQ.LESSONS.filter(l => l.order < target.order).map(l => l.id);
+  sandbox.__TRQ.state = {
+    ...defaultState(),
+    completedLessons: done,
+    unlockedLessons: [...done, lessonId],
+    currentLessonId: lessonId,
+  };
+}
+
 // Force fresh state
 sandbox.__TRQ.state = { ...defaultState() };
 
@@ -145,6 +156,8 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   const ni = WORDS.find(w => w.id === 'ni');
   const maak = WORDS.find(w => w.id === 'maak');
   const m9 = LESSONS.find(l => l.id === 'medium-9');
+  const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  seedCompletedBefore('medium-9');
   const before = getKnownBefore(m9);
   console.assert(wordNeedsFinalSoundMap(we), 'เวร needs final-sound-map');
   console.assert(wordNeedsFinalSoundMap(ni), 'นิล needs final-sound-map');
@@ -154,6 +167,8 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   console.assert(wordIsKnown(maak, before), 'มาก allowed before medium-9');
   console.assert(m9.introduces.rules.includes('final-sound-map'), 'medium-9 teaches final-sound-map');
   console.assert(/ร\/ล/.test(m9.teachingCards.map(c => c.body).join(' ')), 'medium-9 teaches final ร/ล → n');
+  console.assert(/เวร/.test(a1.teachingCards.map(c => c.body).join(' ')), 'advanced-1 reminds final ร → n with เวร');
+  console.assert(a1.practiceWordIds.includes('we'), 'advanced-1 practices เวร before its test');
 }
 
 // Mai han-akat (ั) must be taught before ฟัน / สวัสดี
@@ -163,6 +178,7 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   const fuu = WORDS.find(w => w.id === 'fuu');
   const sawasdee = WORDS.find(w => w.id === 'sawasdee');
   const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  seedCompletedBefore('advanced-1');
   const before = getKnownBefore(a1);
   console.assert(faa.thai === 'ฟัน' && faa.vowels.includes('ั'), 'ฟัน tagged with ั');
   console.assert(!faa.rules.includes('implicit-o'), 'ฟัน is not implicit-o');
@@ -187,6 +203,7 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   const suay = WORDS.find(w => w.id === 'suay');
   const a1 = LESSONS.find(l => l.id === 'advanced-1');
   const a2 = LESSONS.find(l => l.id === 'advanced-2');
+  seedCompletedBefore('advanced-1');
   const beforeA1 = getKnownBefore(a1);
   const duringA1 = {
     consonants: new Set([...beforeA1.consonants, ...a1.introduces.consonants]),

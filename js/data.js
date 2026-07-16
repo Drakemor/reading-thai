@@ -365,11 +365,12 @@ const LESSONS = [
   {id:'advanced-1',level:'advanced',order:23,title:'More common consonants',unlockAfter:'medium-boss',isBoss:false,
     introduces:{consonants:['ข','ส','ฟ','ซ','ถ','ผ','ฝ'],vowels:['ั'],rules:['leading-h']},
     teachingCards:[
+      {title:'Reminder: final ร/ล sound like n',body:'Before new letters: ร is “r” at the start (รา = raa), but as a final it is n — เวร = ween, not “weer”. Same for ล (นิล = nin). You will see these again in review.'},
       {title:'Seven new consonants',body:'ข=kh, ส=s, ฟ=f, ซ=s, ถ=th, ผ=ph, ฝ=f. Watch for confusing pairs: ข vs ช, พ vs ฟ, ก vs ถ.'},
       {title:'Leading ห before ม น ง',body:'Sometimes ห sits in front of ม/น/ง. You still hear m/n/ng — not “hm/hn/hng”. หมู = muu (pig), หนู = nuu (mouse), หมา = maa (dog).'},
       {title:'New mark: ั (mai han-akat)',body:'ั is a short a written above the consonant. It usually needs a final consonant: ฟัน = fan (tooth). Do not treat it as a missing vowel, and do not confuse it with ะ (short a written after the consonant).'},
     ],
-    examples:['khaa2','sii','fuu','faa','saa','muu'],practiceWordIds:['khaa2','sii','fuu','faa','saa','thaa2','muu','nuu','maa_dog']},
+    examples:['we','khaa2','sii','fuu','faa','saa','muu'],practiceWordIds:['we','ni','khaa2','sii','fuu','faa','saa','thaa2','muu','nuu','maa_dog']},
   {id:'advanced-2',level:'advanced',order:24,title:'Common real-world words',unlockAfter:'advanced-1',isBoss:false,
     introduces:{consonants:[],vowels:['ำ','้','-วย'],rules:['tone-mark','special-vowel','multi-syllable','w-vowel-ua']},
     teachingCards:[
