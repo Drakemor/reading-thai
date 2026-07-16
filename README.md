@@ -26,6 +26,7 @@
 - **Survival** — 3 hearts, length-weighted score, personal best + top runs in `localStorage`
 - **Keyboard-first** — ↑↓, Enter, 1–4, Esc
 - **8-bit chip audio** for UI / correct / wrong / death (muteable)
+- **Cloud sync** — optional Google sign-in via Firebase to back up progress across devices (offline-first; localStorage still works without an account)
 
 ## Run locally
 
@@ -63,6 +64,31 @@ This repo is set up for **Pages from the `main` branch root** (`/`). After push,
 
 `https://<user>.github.io/reading-thai/`
 
+## Cloud sync (Google + Firebase — free tier)
+
+Progress is stored locally first. To sync across devices with the Firebase Spark (free) plan:
+
+1. Create a free [Firebase](https://firebase.google.com) project (Spark plan).
+2. Enable products:
+   - Authentication → Sign-in method → enable **Google**
+   - Firestore Database → create database (in production mode)
+3. Security rules (restrict to the signed-in user only):
+   - Open Firestore → Rules, paste `firebase/firestore.rules`, and publish
+4. Web app config:
+   - Project Settings → General → Your apps (Web) → Register app (no hosting needed)
+   - Copy the Web app config values
+5. App configuration:
+   - Copy `js/config.example.js` → `js/config.js`
+   - Set `enabled: true` and fill the `firebase` fields
+6. Authorized domains:
+   - Authentication → Settings → Authorized domains: add `localhost` and `drakemor.github.io`
+
+On the dashboard, use **Sign in with Google**. Your current device progress is merged with any saved cloud data. Changes upload automatically while you play.
+
+Notes on free tier:
+- Firebase Auth (Google) is free to use.
+- Firestore Spark tier has generous free reads/writes for small personal projects; avoid heavy analytics writes in gameplay loops (this app debounces to keep usage low).
+
 ## Project layout
 
 ```
@@ -71,6 +97,9 @@ css/styles.css      Layout + animations
 js/data.js          Symbols, word bank, lessons
 js/audio.js         Chip synth
 js/app.js           State, quizzes, Survival, demo hooks
+js/config.js        Firebase keys (copy from config.example.js)
+js/sync.js          Google sign-in + cloud progress sync (Firebase)
+firebase/firestore.rules  Firestore security rules (user-only access)
 scripts/            Smoke test + screenshot capture
 docs/screenshots/   README images
 ```
