@@ -1192,7 +1192,10 @@ function formatPromptHtml(text, fontClass) {
 
 function renderRulePrompt(prompt, font) {
   const fc = getFontClass(font);
-  const m = String(prompt).match(/^([\u0E00-\u0E7F]+)(\s*)(.*)$/);
+  const text = String(prompt);
+  // Avoid hero breakdown for formula-style prompts like "เ + consonant + ะ..."
+  const formulaLike = /\+/.test(text) || /makes one sound/i.test(text);
+  const m = !formulaLike ? text.match(/^([\u0E00-\u0E7F]{2,})(\s*)(.*)$/) : null;
   if (m && m[1]) {
     const rest = (m[3] || '').trim() || 'is read as...';
     return `<div class="text-center mb-5 space-y-3">
@@ -1200,7 +1203,7 @@ function renderRulePrompt(prompt, font) {
       <p class="text-slate-400 text-lg">${formatPromptHtml(rest, fc)}</p>
     </div>`;
   }
-  return `<p class="text-slate-300 mb-4 text-lg leading-relaxed">${formatPromptHtml(prompt, fc)}</p>`;
+  return `<p class="text-slate-300 mb-4 text-lg leading-relaxed text-center">${formatPromptHtml(prompt, fc)}</p>`;
 }
 
 function escAttr(s) {
@@ -1238,9 +1241,9 @@ function buildRuleQuestion(known, requiredRuleId) {
     {q:'Which symbol is the mai ek tone mark?', opts:['่','้','๊','๋'], a:'่', requires:{vowels:['่']}},
     {q:'The silent mark ์ makes a letter...', opts:['silent','louder','a vowel'], a:'silent', requires:{rules:['silent-mark']}},
     {q:'เก is read as...', opts:['ke/ge','ek','gek'], a:'ke/ge', requires:{vowels:['เ-'],consonants:['ก']}},
-    {q:'เ + consonant + ะ makes one sound. เกะ is...', opts:['ke/ge (short e)','kea (e + a)','ek'], a:'ke/ge (short e)', requires:{rules:['compound-short-e']}},
-    {q:'In เละ, the letters เ…ะ mean...', opts:['one short e (le)','e then a (lea)','long aa'], a:'one short e (le)', requires:{rules:['compound-short-e'],consonants:['ล']}},
-    {q:'โ + consonant + ะ makes one sound. โกะ is...', opts:['ko/go (short o)','koa (o + a)','ok'], a:'ko/go (short o)', requires:{rules:['compound-short-o']}},
+    {q:'เกะ is read as...', opts:['ke/ge (short e)','kea (e + a)','ek'], a:'ke/ge (short e)', requires:{rules:['compound-short-e']}},
+    {q:'เละ is read as...', opts:['le (short e)','lea (e then a)','laa'], a:'le (short e)', requires:{rules:['compound-short-e'],consonants:['ล']}},
+    {q:'โกะ is read as...', opts:['ko/go (short o)','koa (o + a)','ok'], a:'ko/go (short o)', requires:{rules:['compound-short-o']}},
   ];
   let eligible = rules.filter(r => ruleIsAvailable(r, known));
   if (requiredRuleId) {
