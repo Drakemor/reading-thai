@@ -141,10 +141,19 @@ function pruneUntaughtProgressWords() {
   if (state.weakWords.length !== beforeWeak) saveState();
 }
 
+function wordNeedsLeadingH(w) {
+  if (!w?.consonants?.length) return false;
+  // True leading-ห cluster: ห + sonorant (หมู, หนู, หมา, หงิก). Not plain หา, and not mid-word ห in อาหาร.
+  const sonorants = new Set(['ม', 'น', 'ง', 'ว', 'ย', 'ร', 'ล']);
+  return w.consonants[0] === 'ห' && sonorants.has(w.consonants[1]);
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
   if (!w.rules.every(s => known.rules.has(s))) return false;
+  // Hard gate even if a word forgot the leading-h rule tag
+  if (wordNeedsLeadingH(w) && !known.rules.has('leading-h')) return false;
   return true;
 }
 

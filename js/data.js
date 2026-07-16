@@ -222,7 +222,7 @@ const WORDS = [
   {id:'ahaan',thai:'อาหาร',romanizations:['aa-haan','ahaan'],meaning:'food',emoji:'🍲',level:'advanced',lessonId:'advanced-2',consonants:['อ','ห','ร','น'],vowels:['า'],rules:['vowel-carrier','final-consonant','multi-syllable','implicit-o'],explanation:'อาหาร — three pieces.'},
   {id:'kho',thai:'ขอ',romanizations:['kho'],meaning:'ask / request',emoji:'🙏',level:'advanced',lessonId:'advanced-2',consonants:['ข','อ'],vowels:[],rules:['vowel-carrier','implicit-o'],explanation:'ขอ = ask.'},
   {id:'som',thai:'ส้ม',romanizations:['som'],meaning:'orange (fruit)',emoji:'🍊',level:'advanced',lessonId:'advanced-2',consonants:['ส','ม'],vowels:['้'],rules:['final-consonant','tone-mark','implicit-o'],explanation:'ส้ม = orange.'},
-  {id:'maa_dog',thai:'หมา',romanizations:['maa'],meaning:'dog',emoji:'🐶',level:'advanced',lessonId:'advanced-2',consonants:['ห','ม'],vowels:['า'],rules:['open-syllable'],explanation:'หมา = dog.'},
+  {id:'maa_dog',thai:'หมา',romanizations:['maa'],meaning:'dog',emoji:'🐶',level:'advanced',lessonId:'advanced-1',consonants:['ห','ม'],vowels:['า'],rules:['open-syllable','leading-h'],explanation:'หมา = dog. Leading ห before ม is silent for class; read maa (not hmaa).'},
   {id:'ron',thai:'ร้อน',romanizations:['ron'],meaning:'hot',emoji:'🔥',level:'advanced',lessonId:'advanced-2',consonants:['ร','น'],vowels:['โ-','้'],rules:['final-consonant','tone-mark','vowel-before'],explanation:'ร้อน = hot.'},
   {id:'klaang',thai:'กลาง',romanizations:['klaang','klang'],meaning:'middle',emoji:'↔️',level:'advanced',lessonId:'advanced-2',consonants:['ก','ล','ง'],vowels:['า'],rules:['final-consonant'],explanation:'กลาง = middle.'},
   {id:'jing',thai:'จริง',romanizations:['jing'],meaning:'true / really',emoji:'✅',level:'advanced',lessonId:'advanced-2',consonants:['จ','ร','ง'],vowels:['ิ'],rules:['final-consonant'],explanation:'จริง = true.'},
@@ -359,9 +359,9 @@ const LESSONS = [
     introduces:{consonants:['ข','ส','ฟ','ซ','ถ','ผ','ฝ'],vowels:[],rules:['leading-h']},
     teachingCards:[
       {title:'Seven new consonants',body:'ข=kh, ส=s, ฟ=f, ซ=s, ถ=th, ผ=ph, ฝ=f. Watch for confusing pairs: ข vs ช, พ vs ฟ, ก vs ถ.'},
-      {title:'Leading ห before ม น ง',body:'Sometimes ห sits in front of ม/น/ง. You still hear m/n/ng — not “hm/hn/hng”. หมู = muu (pig), หนู = nuu (mouse).'},
+      {title:'Leading ห before ม น ง',body:'Sometimes ห sits in front of ม/น/ง. You still hear m/n/ng — not “hm/hn/hng”. หมู = muu (pig), หนู = nuu (mouse), หมา = maa (dog).'},
     ],
-    examples:['khaa2','sii','faa','saa','muu'],practiceWordIds:['khaa2','sii','faa','saa','thaa2','muu','nuu']},
+    examples:['khaa2','sii','faa','saa','muu'],practiceWordIds:['khaa2','sii','faa','saa','thaa2','muu','nuu','maa_dog']},
   {id:'advanced-2',level:'advanced',order:24,title:'Common real-world words',unlockAfter:'advanced-1',isBoss:false,
     introduces:{consonants:[],vowels:['ำ','้'],rules:['tone-mark','special-vowel','multi-syllable']},
     teachingCards:[
