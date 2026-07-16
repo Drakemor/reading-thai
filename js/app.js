@@ -38,7 +38,7 @@ let selectedOptionIdx = 0;
 let lessonSlideIdx = 0;
 let lessonSlides = null;
 let navBtnIdx = 0;
-let animCtx = { slideDir: 0, timerId: null };
+let animCtx = { slideDir: 0, timerId: null, cardFlip: false };
 
 function loadState() {
   try {
@@ -83,6 +83,29 @@ function renderWordAllFonts(thai, sizeClass) {
   return `<div class="symbol-duo anim-stagger-tight">
     <div class="symbol-card"><p class="symbol-duo-label">Looped</p><p class="${sz} font-thai-looped anim-thai" lang="th">${shown}</p></div>
     <div class="symbol-card"><p class="symbol-duo-label">Modern</p><p class="${sz} font-thai-modern anim-thai" lang="th">${shown}</p></div>
+  </div>`;
+}
+
+function renderWordFlipCard(word, { revealed = false, animateFlip = false, kicker = 'Word', footerHtml = '' } = {}) {
+  if (!word) return '';
+  const flippedClass = revealed && !animateFlip ? ' is-flipped' : '';
+  const emoji = word.emoji ? `<span class="flip-emoji" aria-hidden="true">${word.emoji}</span>` : '';
+  return `<div class="flip-scene">
+    <div class="flip-card${flippedClass}" id="lesson-flip-card">
+      <div class="flip-face flip-front panel">
+        <p class="flip-kicker">${escHtml(kicker)}</p>
+        ${renderWordAllFonts(word.thai, 'thai-glyph-hero')}
+        <p class="flip-hint">Press Enter to flip</p>
+      </div>
+      <div class="flip-face flip-back panel">
+        <p class="flip-kicker">${escHtml(kicker)}</p>
+        ${renderWordAllFonts(word.thai, 'thai-glyph-pair')}
+        <p class="flip-roman">${escHtml(word.romanizations.join(' / '))}</p>
+        <p class="flip-meaning">${emoji}<strong>${escHtml(word.meaning || '')}</strong></p>
+        <p class="flip-explain">${formatMixedThai(word.explanation || '', 'thai-glyph')}</p>
+        ${footerHtml || ''}
+      </div>
+    </div>
   </div>`;
 }
 
@@ -213,6 +236,10 @@ function wordNeedsFinalSoundMap(w) {
   return changing.has(w.consonants[w.consonants.length - 1]);
 }
 
+function wordNeedsMaiHanAkat(w) {
+  return !!(w?.thai && w.thai.includes('\u0E31'));
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
@@ -221,6 +248,8 @@ function wordIsKnown(w, known) {
   if (wordNeedsLeadingH(w) && !known.rules.has('leading-h')) return false;
   // Hard gate letter≠sound finals (เวร, นิล, คีบ, ปิด, …) until medium-9 map is taught
   if (wordNeedsFinalSoundMap(w) && !known.rules.has('final-sound-map')) return false;
+  // Hard gate mai han-akat (ั) words like ฟัน / สวัสดี until the mark is taught
+  if (wordNeedsMaiHanAkat(w) && !known.vowels.has('ั')) return false;
   return true;
 }
 
@@ -1373,6 +1402,7 @@ function buildRuleQuestion(known, requiredRuleId) {
     {q:'As a final consonant, ล is pronounced like...', opts:['n','l','r'], a:'n', requires:{rules:['final-sound-map'],consonants:['ล']}},
     {q:'As a final consonant, ด or ต is pronounced like...', opts:['t','d','k'], a:'t', requires:{rules:['final-sound-map']}},
     {q:'As a final consonant, บ or ป is pronounced like...', opts:['p','b','m'], a:'p', requires:{rules:['final-sound-map']}},
+    {q:'The mark ั above a consonant is...', opts:['short a','long aa','a tone mark'], a:'short a', requires:{vowels:['ั']}},
     {q:'If two consonants appear without a vowel, Thai often inserts...', opts:['short o','long aa','tone mark'], a:'short o', requires:{rules:['implicit-o']}},
     {q:'Which class is ก?', opts:['Mid','High','Low'], a:'Mid', requires:{rules:['consonant-class']}},
     {q:'Which class is ส?', opts:['Mid','High','Low'], a:'High', requires:{rules:['consonant-class'],consonants:['ส']}},
@@ -1759,9 +1789,19 @@ function render() {
     case 'review': html = renderReview(); break;
   }
   app.innerHTML = html;
+  const shouldFlip = animCtx.cardFlip;
   animCtx.slideDir = 0;
+  animCtx.cardFlip = false;
   attachKeyboard();
   focusPrimaryUI();
+  if (shouldFlip) {
+    const card = document.getElementById('lesson-flip-card');
+    if (card) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => card.classList.add('is-flipped'));
+      });
+    }
+  }
 }
 
 function focusPrimaryUI() {
@@ -2054,7 +2094,7 @@ function renderSymbolCard(sym) {
     <div><span class="text-slate-400">Sound:</span> <strong>${escHtml(s.sound)}</strong></div>
     <div><span class="text-slate-400">Role:</span> <strong>${escHtml(typeLabel)}</strong></div>
     ${s.warning ? `<p class="text-amber-400 text-sm">⚠ ${formatMixedThai(s.warning, 'thai-glyph')}</p>` : ''}
-    ${exWord ? `<div><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'thai-glyph-pair')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p></div>` : ''}
+    ${exWord ? `<div><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'thai-glyph-pair')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p><p class="text-slate-300 mt-1">${exWord.emoji ? `${exWord.emoji} ` : ''}${escHtml(exWord.meaning || '')}</p></div>` : ''}
   </div>`;
 }
 
@@ -2109,15 +2149,16 @@ function renderLessonView() {
     </div></div>`;
   } else if (slide.type === 'example' || slide.type === 'practice') {
     const w = WORDS.find(x => x.id === slide.wordId);
-    const rev = slide.type === 'practice' && lessonReveal[w.id];
-    body = `<div class="slide-body"><div class="panel text-center space-y-4 anim-card">
-      <p class="text-xs text-slate-400 uppercase tracking-wide">${slide.type === 'practice' ? 'Practice' : 'Example'}</p>
-      ${renderWordAllFonts(w.thai, 'thai-glyph-hero')}
-      ${rev || slide.type === 'example'
-        ? `<div class="anim-reveal"><p class="text-xl">Pronunciation: <strong>${w.romanizations.join('/')}</strong></p>
-           <p class="text-slate-400">${formatMixedThai(w.explanation, 'thai-glyph')}</p>${slide.type === 'practice' ? `<div class="mt-2">${masteryDots(w.id)}</div>` : ''}</div>`
-        : `<p class="text-slate-400">Press Enter to reveal pronunciation</p>`}
-    </div></div>`;
+    const revealed = !!lessonReveal[w.id];
+    const animateFlip = !!(animCtx.cardFlip && revealed);
+    const kicker = slide.type === 'practice' ? 'Practice' : 'Example';
+    const footer = slide.type === 'practice' ? `<div class="mt-2">${masteryDots(w.id)}</div>` : '';
+    body = `<div class="slide-body">${renderWordFlipCard(w, {
+      revealed,
+      animateFlip,
+      kicker,
+      footerHtml: footer,
+    })}</div>`;
   } else if (slide.type === 'test') {
     body = `<div class="slide-body"><div class="panel text-center space-y-6 anim-card">
       <h2 class="text-3xl font-bold m-0">Ready for the test?</h2>
@@ -2127,8 +2168,9 @@ function renderLessonView() {
   }
 
   const hint = slide.type === 'test' ? 'Enter start test · ← back'
-    : slide.type === 'practice' && !lessonReveal[slide.wordId] ? 'Enter reveal · → next · ← back · Esc lessons'
-    : '→ or Enter next · ← back · Esc lessons';
+    : (slide.type === 'practice' || slide.type === 'example') && !lessonReveal[slide.wordId]
+      ? 'Enter flip for sound + meaning · → next · ← back · Esc lessons'
+      : '→ or Enter next · ← back · Esc lessons';
 
   const slideAnim = animCtx.slideDir > 0 ? 'anim-slide-forward' : animCtx.slideDir < 0 ? 'anim-slide-back' : 'anim-slide-fade';
   return `<div class="shell-frame lesson-rail anim-screen ${slideAnim}">
@@ -2314,14 +2356,16 @@ function handleLessonKey(e) {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); lessonPrevSlide(); }
     return;
   }
-  if (slide.type === 'practice' && !lessonReveal[slide.wordId]) {
+  if ((slide.type === 'practice' || slide.type === 'example') && !lessonReveal[slide.wordId]) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       ChipAudio.uiReveal();
+      animCtx.cardFlip = true;
       lessonReveal[slide.wordId] = true;
       render();
     }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); lessonPrevSlide(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); /* stay until flipped */ }
     return;
   }
   if (e.key === 'ArrowRight' || e.key === 'Enter') { e.preventDefault(); lessonNextSlide(); }
