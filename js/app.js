@@ -188,8 +188,9 @@ function getNewLessonWords(lesson, known) {
 function pickReadingType(idx) {
   const roll = idx % 10;
   if (roll < 5) return 'type_roman';
+  // bias slightly toward MCQ sometimes
   if (roll < 8) return 'choose_pron';
-  return 'build_syllable';
+  return 'type_roman';
 }
 
 function buildReadingQuestion(type, word, wordPool, font) {
@@ -201,7 +202,8 @@ function buildReadingQuestion(type, word, wordPool, font) {
     return {type, word, font, options: opts, prompt:'Read this. Choose the pronunciation:'};
   }
   if (type === 'build_syllable') {
-    return {type, word, font, pieces: buildSyllablePieces(word), prompt:'Read this syllable. Type the pronunciation:'};
+    // Simplify: treat as normal typed reading without decomposition hints
+    return {type:'type_roman', word, font, prompt:'Read this. Type the pronunciation:'};
   }
   return null;
 }
@@ -496,7 +498,7 @@ function generateMixedQuestions(count, words, known, startIdx, usedKeys) {
   const typed = Math.ceil(count * 0.50), chooseP = Math.ceil(count * 0.30), ruleB = Math.ceil(count * 0.20);
   for (let i = 0; i < typed; i++) types.push('type_roman');
   for (let i = 0; i < chooseP; i++) types.push('choose_pron');
-  for (let i = 0; i < ruleB; i++) types.push(Math.random() > 0.5 ? 'build_syllable' : 'rule');
+  for (let i = 0; i < ruleB; i++) types.push('rule');
   while (types.length < count) types.push('type_roman');
   const qs = [];
   shuffle(types).slice(0, count).forEach((type, i) => {
@@ -1999,9 +2001,9 @@ function renderTest() {
     content = `${renderRulePrompt(q.prompt, q.font)}
       <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
   } else if (q.type === 'build_syllable') {
-    content = `<p class="text-slate-400 mb-2">${formatPromptHtml(q.prompt, fc)}</p>
-      <p class="text-4xl text-center mb-2 ${fc} anim-thai">${q.pieces}</p>
-      <p class="text-6xl sm:text-7xl text-center mb-6 ${fc} anim-thai" style="animation-delay:60ms">${q.word.thai}</p>
+    // Render like normal typed reading without showing decomposition
+    content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">Read this. Type the pronunciation:</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   } else if (q.type === 'choose_pron') {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
