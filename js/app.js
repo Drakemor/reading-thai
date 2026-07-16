@@ -1648,6 +1648,20 @@ function highlightOption(idx) {
   opts[selectedOptionIdx].focus();
 }
 
+function highlightOptionGrid(deltaRow, deltaCol) {
+  const opts = getTestOptions();
+  if (opts.length !== 4) { // fallback to linear
+    highlightOption(selectedOptionIdx + (deltaRow !== 0 || deltaCol > 0 ? 1 : -1));
+    return;
+  }
+  const cols = 2, rows = 2;
+  const curRow = Math.floor(selectedOptionIdx / cols);
+  const curCol = selectedOptionIdx % cols;
+  const nextRow = Math.min(rows - 1, Math.max(0, curRow + deltaRow));
+  const nextCol = Math.min(cols - 1, Math.max(0, curCol + deltaCol));
+  const nextIdx = nextRow * cols + nextCol;
+  highlightOption(nextIdx);
+}
 function submitSelectedOption() {
   const opts = getTestOptions();
   if (!opts.length) return;
@@ -2116,9 +2130,18 @@ function handleTestKey(e) {
     return;
   }
   if (!opts.length) return;
-  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1); }
-  else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1); }
-  else if (e.key === 'Enter') { e.preventDefault(); submitSelectedOption(); }
+  let handled = false;
+  if (opts.length === 4) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); highlightOptionGrid(0, +1); handled = true; }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); highlightOptionGrid(0, -1); handled = true; }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); highlightOptionGrid(+1, 0); handled = true; }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlightOptionGrid(-1, 0); handled = true; }
+  } else {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1); handled = true; }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1); handled = true; }
+  }
+  if (handled) return;
+  if (e.key === 'Enter') { e.preventDefault(); submitSelectedOption(); }
   else if (e.key >= '1' && e.key <= '9') {
     const idx = parseInt(e.key, 10) - 1;
     if (idx < opts.length) { e.preventDefault(); highlightOption(idx); submitSelectedOption(); }
