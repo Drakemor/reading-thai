@@ -1204,9 +1204,13 @@ function optionBtnClass(opt, extra) {
 }
 
 function renderOptionButtons(options, qType) {
-  return options.map((o, i) =>
+  const btns = options.map((o, i) =>
     `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')} anim-opt" style="animation-delay:${i*45}ms" data-option-index="${i}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
-  ).join('');
+  );
+  if (options.length === 4) {
+    return `<div class="grid grid-cols-2 gap-3">${btns.join('')}</div>`;
+  }
+  return `<div class="space-y-3">${btns.join('')}</div>`;
 }
 
 function buildRuleQuestion(known, requiredRuleId) {
@@ -1965,18 +1969,18 @@ function renderTest() {
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   } else if (q.type === 'choose_pron') {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
-      <p class="text-slate-400 mb-4 anim-reveal" style="animation-delay:70ms">${q.prompt}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
   } else {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
-      <p class="text-slate-400 mb-4 anim-reveal" style="animation-delay:70ms">${q.prompt}</p>
+      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   }
 
   return `<div class="space-y-4" id="test-question">
     ${testLesson ? renderProgressHeader(testLesson) : ''}
     <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400 anim-reveal">
-      <span>${testSession.isSurvival ? `Q ${cur + 1}` : `Question ${cur+1}/${total}`}</span>
+      <span class="whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `Question ${cur+1}/${total}`}</span>
       ${heartsHtml}
       <span class="${scoreAnim}">${testSession.isSurvival
         ? `Points: ${testSession.survivalPoints || 0}`
