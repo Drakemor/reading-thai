@@ -205,12 +205,22 @@ function wordNeedsLeadingH(w) {
   return w.consonants[0] === 'ห' && sonorants.has(w.consonants[1]);
 }
 
+/** Finals whose spoken sound ≠ letter name: ด/ต→t, บ/ป→p, ร/ล→n (taught in medium-9). */
+function wordNeedsFinalSoundMap(w) {
+  if (!w?.consonants?.length) return false;
+  if (!w.rules?.includes('final-consonant')) return false;
+  const changing = new Set(['ร', 'ล', 'ด', 'ต', 'บ', 'ป']);
+  return changing.has(w.consonants[w.consonants.length - 1]);
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
   if (!w.rules.every(s => known.rules.has(s))) return false;
   // Hard gate even if a word forgot the leading-h rule tag
   if (wordNeedsLeadingH(w) && !known.rules.has('leading-h')) return false;
+  // Hard gate letter≠sound finals (เวร, นิล, คีบ, ปิด, …) until medium-9 map is taught
+  if (wordNeedsFinalSoundMap(w) && !known.rules.has('final-sound-map')) return false;
   return true;
 }
 
@@ -1359,6 +1369,10 @@ function buildRuleQuestion(known, requiredRuleId) {
     {q:'Does ้ affect pronunciation/tone?', opts:['Yes','No'], a:'Yes', requires:{vowels:['้']}},
     {q:'Do tone marks replace vowels?', opts:['Yes','No'], a:'No', requires:{rules:['tone-mark']}},
     {q:'Final consonants in Thai can...', opts:['end a syllable','replace vowels','be ignored'], a:'end a syllable', requires:{rules:['final-consonant']}},
+    {q:'As a final consonant, ร is pronounced like...', opts:['n','r','l'], a:'n', requires:{rules:['final-sound-map'],consonants:['ร']}},
+    {q:'As a final consonant, ล is pronounced like...', opts:['n','l','r'], a:'n', requires:{rules:['final-sound-map'],consonants:['ล']}},
+    {q:'As a final consonant, ด or ต is pronounced like...', opts:['t','d','k'], a:'t', requires:{rules:['final-sound-map']}},
+    {q:'As a final consonant, บ or ป is pronounced like...', opts:['p','b','m'], a:'p', requires:{rules:['final-sound-map']}},
     {q:'If two consonants appear without a vowel, Thai often inserts...', opts:['short o','long aa','tone mark'], a:'short o', requires:{rules:['implicit-o']}},
     {q:'Which class is ก?', opts:['Mid','High','Low'], a:'Mid', requires:{rules:['consonant-class']}},
     {q:'Which class is ส?', opts:['Mid','High','Low'], a:'High', requires:{rules:['consonant-class'],consonants:['ส']}},

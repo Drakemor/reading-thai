@@ -48,6 +48,7 @@ vm.runInContext(
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
     submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
     displayThaiText, formatMixedThai,
+    wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap,
     get state() { return state; },
     set state(v) { state = v; },
     get testSession() { return testSession; },
@@ -135,6 +136,24 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   sandbox.__TRQ.continueToResults();
   console.assert(sess.awaitingResults === false, 'hold cleared');
   console.assert(sess.finished === true, 'results after continue');
+}
+
+// Final ร/ล → n must stay gated until medium-9 final-sound-map
+{
+  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap } = sandbox.__TRQ;
+  const we = WORDS.find(w => w.id === 'we');
+  const ni = WORDS.find(w => w.id === 'ni');
+  const maak = WORDS.find(w => w.id === 'maak');
+  const m9 = LESSONS.find(l => l.id === 'medium-9');
+  const before = getKnownBefore(m9);
+  console.assert(wordNeedsFinalSoundMap(we), 'เวร needs final-sound-map');
+  console.assert(wordNeedsFinalSoundMap(ni), 'นิล needs final-sound-map');
+  console.assert(!wordNeedsFinalSoundMap(maak), 'มาก does not need final-sound-map');
+  console.assert(!wordIsKnown(we, before), 'เวร blocked before medium-9');
+  console.assert(!wordIsKnown(ni, before), 'นิล blocked before medium-9');
+  console.assert(wordIsKnown(maak, before), 'มาก allowed before medium-9');
+  console.assert(m9.introduces.rules.includes('final-sound-map'), 'medium-9 teaches final-sound-map');
+  console.assert(/ร\/ล/.test(m9.teachingCards.map(c => c.body).join(' ')), 'medium-9 teaches final ร/ล → n');
 }
 
 // Thai display: carriers for combining marks + hyphen placeholders
