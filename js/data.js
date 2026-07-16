@@ -284,7 +284,7 @@ const LESSONS = [
   {id:'medium-2',level:'medium',order:13,title:'Add ว ย จ',unlockAfter:'medium-1',isBoss:false,
     introduces:{consonants:['ว','ย','จ'],vowels:[],rules:[]},
     teachingCards:[{title:'Three more consonants',body:'ว = w, ย = y, จ = j. Compare ง vs จ when both are known. Keep practising closed syllables too — จาก, ตาก.'}],
-    examples:['waa','jaa','jaak','dtaak'],practiceWordIds:['waa','yaa','jaa','ne','jaak','dtaak','phaan']},
+    examples:['waa','jaa','jaak','dtaak'],practiceWordIds:['waa','yaa','jaa','jaak','dtaak','phaan']},
   {id:'medium-3',level:'medium',order:14,title:'Add ด ท ช and ู',unlockAfter:'medium-2',isBoss:false,
     introduces:{consonants:['ด','ท','ช'],vowels:['ู'],rules:[]},
     confusingPairIds:['mo-tho'],
