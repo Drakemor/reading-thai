@@ -1249,12 +1249,12 @@ function optionBtnClass(opt, extra) {
 
 function renderOptionButtons(options, qType) {
   const btns = options.map((o, i) =>
-    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')} anim-opt" style="animation-delay:${i*45}ms" data-option-index="${i}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
+    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')}" style="animation-delay:${i*45}ms" data-option-index="${i}" tabindex="${i===selectedOptionIdx?0:-1}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
   );
   if (options.length === 4) {
-    return `<div class="grid grid-cols-2 gap-3">${btns.join('')}</div>`;
+    return `<div class="grid grid-cols-2 gap-3" role="listbox" aria-label="Answer choices">${btns.join('')}</div>`;
   }
-  return `<div class="space-y-3">${btns.join('')}</div>`;
+  return `<div class="space-y-3" role="listbox" aria-label="Answer choices">${btns.join('')}</div>`;
 }
 
 function buildRuleQuestion(known, requiredRuleId) {
@@ -1668,38 +1668,44 @@ function getTestHint(q) {
   if (q.type === 'type_roman' || q.type === 'build_syllable') return 'Type your answer, then press Enter';
   const n = q.options ? q.options.length : 0;
   if (n <= 1) return 'Press Enter to select';
-  return '↑ ↓ to move · Enter to select · 1–' + Math.min(n, 9) + ' quick pick';
+  if (n === 4) return '↑ ↓ ← → move · Enter select · 1–4 quick pick';
+  return '↑ ↓ move · Enter to select · 1–' + Math.min(n, 9) + ' quick pick';
 }
 
 function getTestOptions() {
   return [...document.querySelectorAll('.test-option')];
 }
 
-function highlightOption(idx) {
+function highlightOption(idx, { wrap = false } = {}) {
   const opts = getTestOptions();
   if (!opts.length) return;
-  const next = ((idx % opts.length) + opts.length) % opts.length;
+  let next = idx | 0;
+  if (wrap) {
+    next = ((next % opts.length) + opts.length) % opts.length;
+  } else {
+    next = Math.min(opts.length - 1, Math.max(0, next));
+  }
   if (next !== selectedOptionIdx) ChipAudio.uiSelect();
   selectedOptionIdx = next;
   opts.forEach((el, i) => {
     el.classList.toggle('test-option-selected', i === selectedOptionIdx);
+    el.tabIndex = i === selectedOptionIdx ? 0 : -1;
   });
   opts[selectedOptionIdx].focus();
 }
 
 function highlightOptionGrid(deltaRow, deltaCol) {
   const opts = getTestOptions();
-  if (opts.length !== 4) { // fallback to linear
-    highlightOption(selectedOptionIdx + (deltaRow !== 0 || deltaCol > 0 ? 1 : -1));
+  if (opts.length !== 4) {
+    highlightOption(selectedOptionIdx + (deltaRow > 0 || deltaCol > 0 ? 1 : -1), { wrap: false });
     return;
   }
-  const cols = 2, rows = 2;
+  const cols = 2;
   const curRow = Math.floor(selectedOptionIdx / cols);
   const curCol = selectedOptionIdx % cols;
-  const nextRow = Math.min(rows - 1, Math.max(0, curRow + deltaRow));
-  const nextCol = Math.min(cols - 1, Math.max(0, curCol + deltaCol));
-  const nextIdx = nextRow * cols + nextCol;
-  highlightOption(nextIdx);
+  const nextRow = Math.min(1, Math.max(0, curRow + deltaRow));
+  const nextCol = Math.min(1, Math.max(0, curCol + deltaCol));
+  highlightOption(nextRow * cols + nextCol, { wrap: false });
 }
 function submitSelectedOption() {
   const opts = getTestOptions();
@@ -2052,7 +2058,7 @@ function renderTest() {
 
   if (q.type === 'rule') {
     content = `${renderRulePrompt(q.prompt, q.font)}
-      <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
+      ${renderOptionButtons(q.options)}`;
   } else if (q.type === 'build_syllable') {
     // Render like normal typed reading without showing decomposition
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
@@ -2061,7 +2067,7 @@ function renderTest() {
   } else if (q.type === 'choose_pron') {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
-      <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
+      ${renderOptionButtons(q.options)}`;
   } else {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
@@ -2175,6 +2181,12 @@ function handleTestKey(e) {
     return;
   }
   if (!opts.length) return;
+  // Tab moves browser focus without updating selection, so Enter submits the wrong answer.
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    highlightOption(selectedOptionIdx, { wrap: false });
+    return;
+  }
   let handled = false;
   if (opts.length === 4) {
     if (e.key === 'ArrowRight') { e.preventDefault(); highlightOptionGrid(0, +1); handled = true; }
@@ -2182,14 +2194,14 @@ function handleTestKey(e) {
     else if (e.key === 'ArrowDown') { e.preventDefault(); highlightOptionGrid(+1, 0); handled = true; }
     else if (e.key === 'ArrowUp') { e.preventDefault(); highlightOptionGrid(-1, 0); handled = true; }
   } else {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1); handled = true; }
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1); handled = true; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1, { wrap: false }); handled = true; }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1, { wrap: false }); handled = true; }
   }
   if (handled) return;
   if (e.key === 'Enter') { e.preventDefault(); submitSelectedOption(); }
   else if (e.key >= '1' && e.key <= '9') {
     const idx = parseInt(e.key, 10) - 1;
-    if (idx < opts.length) { e.preventDefault(); highlightOption(idx); submitSelectedOption(); }
+    if (idx < opts.length) { e.preventDefault(); highlightOption(idx, { wrap: false }); submitSelectedOption(); }
   }
 }
 
