@@ -262,9 +262,12 @@ function buildConfusingChooseQuestion(word, twinWord, font) {
 }
 
 function getActiveConfusingPairs(known) {
-  return (typeof CONFUSING_PAIRS !== 'undefined' ? CONFUSING_PAIRS : []).filter(p =>
-    known.consonants.has(p.a) && known.consonants.has(p.b)
-  );
+  return (typeof CONFUSING_PAIRS !== 'undefined' ? CONFUSING_PAIRS : []).filter(p => {
+    const need = p.knownAs || { consonants: [p.a, p.b] };
+    const consOk = (need.consonants || []).every(s => known.consonants.has(s));
+    const vowsOk = (need.vowels || []).every(s => known.vowels.has(s));
+    return consOk && vowsOk;
+  });
 }
 
 function confusingPairJobs(pair, known) {
@@ -825,7 +828,7 @@ function renderContrastSlide(pair) {
   if (!pair) return '';
   return `<div class="slide-body"><div class="contrast-slide anim-card">
     <p class="contrast-banner">Stop — these look alike</p>
-    <h2 class="contrast-title">${pair.a} <span class="contrast-vs">vs</span> ${pair.b}</h2>
+    <h2 class="contrast-title"><span class="font-thai-looped">${pair.a}</span> <span class="contrast-vs">vs</span> <span class="font-thai-looped">${pair.b}</span></h2>
     <p class="contrast-tip">${pair.tip}</p>
     <div class="contrast-pair-grid">
       <div class="contrast-glyph-card contrast-glyph-a">
@@ -843,7 +846,7 @@ function renderContrastSlide(pair) {
         <p class="contrast-roman">${pair.bSound}</p>
       </div>
     </div>
-    <p class="contrast-notch">Find the notch on <span class="font-thai-looped">${pair.b}</span> — that is how you tell them apart.</p>
+    <p class="contrast-notch">${pair.tellApart || ''}</p>
     <div class="contrast-compare-grid">
       ${pair.compare.map(c => `
         <div class="contrast-compare-item">
@@ -853,7 +856,7 @@ function renderContrastSlide(pair) {
           <p class="contrast-compare-note">${c.note}</p>
         </div>`).join('')}
     </div>
-    <p class="contrast-footer">Remember: โม = <strong>mo</strong> · โท = <strong>tho</strong> — you will be tested on this.</p>
+    <p class="contrast-footer">${pair.footer || ''}</p>
   </div></div>`;
 }
 
