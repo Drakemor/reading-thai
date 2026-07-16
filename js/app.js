@@ -109,6 +109,38 @@ function getKnownSymbols() {
   return {consonants:c, vowels:v, rules:r};
 }
 
+/** Symbols/rules unlocked by progress so far (completed + current lesson). */
+function getProgressKnown() {
+  const k = {consonants:new Set(), vowels:new Set(), rules:new Set()};
+  const cur = LESSONS.find(l => l.id === state.currentLessonId);
+  const maxOrder = cur ? cur.order : Infinity;
+  LESSONS.forEach(l => {
+    if (l.order > maxOrder) return;
+    if (!state.completedLessons.includes(l.id) && l.id !== state.currentLessonId && !state.unlockedLessons.includes(l.id)) return;
+    l.introduces.consonants.forEach(s => k.consonants.add(s));
+    l.introduces.vowels.forEach(s => k.vowels.add(s));
+    l.introduces.rules.forEach(s => k.rules.add(s));
+  });
+  return k;
+}
+
+/** Drop weak/SRS entries for words that use untaught rules (e.g. old หมู before leading-h). */
+function pruneUntaughtProgressWords() {
+  const known = getProgressKnown();
+  const beforeWeak = state.weakWords.length;
+  state.weakWords = (state.weakWords || []).filter(w => {
+    const word = WORDS.find(x => x.id === w.id);
+    return word && wordIsKnown(word, known);
+  });
+  if (state.failMemory) {
+    Object.keys(state.failMemory).forEach(id => {
+      const word = WORDS.find(x => x.id === id);
+      if (!word || !wordIsKnown(word, known)) delete state.failMemory[id];
+    });
+  }
+  if (state.weakWords.length !== beforeWeak) saveState();
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
@@ -1528,7 +1560,11 @@ function importProgress() {
 }
 
 function startReview() {
-  let words = state.weakWords.map(w => ({...w, word:WORDS.find(x=>x.id===w.id)})).filter(w=>w.word);
+  pruneUntaughtProgressWords();
+  const known = getProgressKnown();
+  let words = state.weakWords
+    .map(w => ({...w, word:WORDS.find(x=>x.id===w.id)}))
+    .filter(w => w.word && wordIsKnown(w.word, known));
   // Prefer SRS-due fails at the front of the review queue
   words.sort((a, b) => srsPriority(b.id) - srsPriority(a.id));
   if (words.length === 0) { alert('No weak words to review!'); return; }
@@ -2050,16 +2086,22 @@ function renderTest() {
 }
 
 function renderReview() {
+  pruneUntaughtProgressWords();
+  const known = getProgressKnown();
+  const weak = state.weakWords.filter(w => {
+    const word = WORDS.find(x => x.id === w.id);
+    return word && wordIsKnown(word, known);
+  });
   const cur = LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
   return `<div class="space-y-6 anim-screen anim-stagger">
     <button type="button" class="text-slate-400 text-sm text-left" onclick="goScreen('dashboard')">← Dashboard (Esc)</button>
     ${renderProgressHeader(cur)}
     <h1 class="text-2xl font-bold">Review Weak Words</h1>
-    <p class="text-slate-400">${state.weakWords.length} weak words</p>
+    <p class="text-slate-400">${weak.length} weak words</p>
     <div class="grid gap-3">
       <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="startReview()">Start Review (Enter)</button>
     </div>
-    <div class="space-y-2">${state.weakWords.slice(0,20).map(w => {
+    <div class="space-y-2">${weak.slice(0,20).map(w => {
       const word = WORDS.find(x=>x.id===w.id);
       return word ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 anim-card">
         ${renderWordAllFonts(word.thai, 'text-2xl sm:text-3xl')}
@@ -2334,6 +2376,7 @@ async function bootstrap() {
       onStateMerged: merged => { state = merged; },
     });
   }
+  pruneUntaughtProgressWords();
   if (document.getElementById('app')) render();
 }
 
