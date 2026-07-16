@@ -93,7 +93,7 @@ const SYMBOLS = [
 /**
  * WORD BANK RULES
  * - Never test letter≠sound exceptions before those rules are taught
- *   (especially final ด/ต → t and บ/ป → p before medium-9’s final-sound deep dive).
+ *   (final ด/ต → t, บ/ป → p, ร/ล → n — all gated behind medium-9 `final-sound-map`).
  * - Prefer sonorant finals น / ม / ง early; use final ก only as k once closed syllables are taught.
  * - Every word must be a real dictionary form with a real meaning (no “(syllable)” fillers).
  * - `emoji` (1–2) is shown on the answer feedback card with the meaning.
@@ -107,7 +107,7 @@ const WORDS = [
   {id:'na',thai:'นานา',romanizations:['naa-naa','naanaa'],meaning:'various / diverse',emoji:'🌈',level:'basic',lessonId:'basic-3',consonants:['น'],vowels:['า'],rules:['open-syllable'],explanation:'นา + นา — practice น and long aa.'},
   {id:'mi',thai:'มิ',romanizations:['mi'],meaning:'not (formal)',emoji:'🚫',level:'basic',lessonId:'basic-4',consonants:['ม'],vowels:['ิ'],rules:['open-syllable'],explanation:'Short i. Formal/literary “not”.'},
   {id:'mii',thai:'มี',romanizations:['mii'],meaning:'have / there is',emoji:'✅',level:'basic',lessonId:'basic-4',consonants:['ม'],vowels:['ี'],rules:['open-syllable'],explanation:'Long ii above consonant.'},
-  {id:'ni',thai:'นิล',romanizations:['nin','nil'],meaning:'sapphire / dark blue gem',emoji:'💎',level:'medium',lessonId:'medium-9',consonants:['น','ล'],vowels:['ิ'],rules:['final-consonant'],explanation:'น + ิ + final ล→n. After ล and final map (medium-9+).'},
+  {id:'ni',thai:'นิล',romanizations:['nin','nil'],meaning:'sapphire / dark blue gem',emoji:'💎',level:'medium',lessonId:'medium-9',consonants:['น','ล'],vowels:['ิ'],rules:['final-consonant','final-sound-map'],explanation:'น + ิ + final ล→n (not “l”). Final ร/ล sound like n.'},
   {id:'nii',thai:'นี้',romanizations:['nii'],meaning:'this',emoji:'👆',level:'advanced',lessonId:'advanced-2',consonants:['น'],vowels:['ี','้'],rules:['open-syllable','tone-mark'],explanation:'นี้ = this. Tone mark ้.'},
   {id:'ki',thai:'กิโล',romanizations:['ki-loo','kilo','gilo'],meaning:'kilo',emoji:'⚖️',level:'basic',lessonId:'basic-9',consonants:['ก','ล'],vowels:['ิ','โ-'],rules:['vowel-before','open-syllable'],explanation:'กิ + โล = kilo.'},
   {id:'kii',thai:'กี่',romanizations:['kii','gii'],meaning:'how many',emoji:'🔢',level:'advanced',lessonId:'advanced-2',consonants:['ก'],vowels:['ี','่'],rules:['open-syllable','tone-mark'],explanation:'กี่ = how many.'},
@@ -145,7 +145,7 @@ const WORDS = [
   {id:'khaa',thai:'คา',romanizations:['khaa'],meaning:'stuck / lodged',emoji:'📌',level:'medium',lessonId:'medium-1',consonants:['ค'],vowels:['า'],rules:['open-syllable'],explanation:'ค = kh (aspirated), า = aa.'},
   {id:'phaa',thai:'พา',romanizations:['phaa'],meaning:'take / bring along',emoji:'🤝',level:'medium',lessonId:'medium-1',consonants:['พ'],vowels:['า'],rules:['open-syllable'],explanation:'พ = ph, า = aa.'},
   {id:'haa',thai:'หา',romanizations:['haa'],meaning:'find / search',emoji:'🔍',level:'medium',lessonId:'medium-1',consonants:['ห'],vowels:['า'],rules:['open-syllable'],explanation:'ห = h, า = aa.'},
-  {id:'khii',thai:'คีบ',romanizations:['khiip','khip'],meaning:'tongs / to pinch with tongs',emoji:'🥢',level:'medium',lessonId:'medium-9',consonants:['ค','บ'],vowels:['ี'],rules:['final-consonant'],explanation:'ค + ี + final บ = p (after medium-9 sound map).'},
+  {id:'khii',thai:'คีบ',romanizations:['khiip','khip'],meaning:'tongs / to pinch with tongs',emoji:'🥢',level:'medium',lessonId:'medium-9',consonants:['ค','บ'],vowels:['ี'],rules:['final-consonant','final-sound-map'],explanation:'ค + ี + final บ→p (not “b”).'},
   {id:'phe',thai:'เพลิน',romanizations:['phloen','pleun'],meaning:'enjoy / be absorbed',emoji:'😊',level:'advanced',lessonId:'advanced-7',consonants:['พ','ล','น'],vowels:['เ-','ิ'],rules:['vowel-before','final-consonant'],explanation:'เพลิน uses an untaught composite reading pattern; moved out of early curriculum until explicitly taught.'},
   {id:'pho',thai:'พอ',romanizations:['pho'],meaning:'enough',emoji:'🆗',level:'medium',lessonId:'medium-10',consonants:['พ','อ'],vowels:[],rules:['implicit-o','vowel-carrier'],explanation:'พ + อ with implicit o = pho (enough).'},
   {id:'waa',thai:'วา',romanizations:['waa'],meaning:'wa (Thai length unit ≈ 2m)',emoji:'📏',level:'medium',lessonId:'medium-2',consonants:['ว'],vowels:['า'],rules:['open-syllable'],explanation:'ว = w, า = aa. วา = Thai fathom.'},
@@ -153,7 +153,7 @@ const WORDS = [
   {id:'jaa',thai:'จาน',romanizations:['jaan'],meaning:'plate / dish',emoji:'🍽️',level:'medium',lessonId:'medium-2',consonants:['จ','น'],vowels:['า'],rules:['final-consonant'],explanation:'จ + า + final น = jaan.'},
   {id:'je',thai:'เจอ',romanizations:['joe','jeu','jer','je'],meaning:'meet / find',emoji:'🤝',level:'medium',lessonId:'medium-4',consonants:['จ','อ'],vowels:['เ-','เ-อ'],rules:['vowel-before','vowel-carrier','compound-oe'],explanation:'เ + จ + อ = one oe/er sound (joe). อ completes the vowel — it is not silent.'},
   {id:'jo',thai:'โจ๊ก',romanizations:['jook','joke'],meaning:'rice porridge / congee',emoji:'🍲',level:'advanced',lessonId:'advanced-3',consonants:['จ','ก'],vowels:['โ-','๊'],rules:['vowel-before','final-consonant','tone-mark'],explanation:'โจ๊ก = congee.'},
-  {id:'we',thai:'เวร',romanizations:['ween','wen'],meaning:'duty shift / karma',emoji:'🔄',level:'medium',lessonId:'medium-9',consonants:['ว','ร'],vowels:['เ-'],rules:['vowel-before','final-consonant'],explanation:'เ + ว + final ร→n.'},
+  {id:'we',thai:'เวร',romanizations:['ween','wen'],meaning:'duty shift / karma',emoji:'🔄',level:'medium',lessonId:'medium-9',consonants:['ว','ร'],vowels:['เ-'],rules:['vowel-before','final-consonant','final-sound-map'],explanation:'เ + ว + final ร→n (not “r”). Final ร/ล sound like n.'},
   {id:'duu',thai:'ดู',romanizations:['duu'],meaning:'look / watch',emoji:'👀',level:'medium',lessonId:'medium-3',consonants:['ด'],vowels:['ู'],rules:['open-syllable'],explanation:'ด = d, ู = uu.'},
   {id:'thaa',thai:'ทา',romanizations:['thaa'],meaning:'apply / spread (cream)',emoji:'🧴',level:'medium',lessonId:'medium-3',consonants:['ท'],vowels:['า'],rules:['open-syllable'],explanation:'ท = th, า = aa.'},
   {id:'chaa',thai:'ชา',romanizations:['chaa'],meaning:'tea',emoji:'🍵',level:'medium',lessonId:'medium-3',consonants:['ช'],vowels:['า'],rules:['open-syllable'],explanation:'ช = ch, า = aa.'},
@@ -218,7 +218,7 @@ const WORDS = [
   {id:'baan',thai:'บ้าน',romanizations:['baan'],meaning:'house',emoji:'🏡',level:'advanced',lessonId:'advanced-2',consonants:['บ','น'],vowels:['า','้'],rules:['final-consonant','tone-mark'],explanation:'บ้าน = house.'},
   {id:'naam',thai:'น้ำ',romanizations:['naam'],meaning:'water',emoji:'💧',level:'advanced',lessonId:'advanced-2',consonants:['น','ม'],vowels:['ำ','้'],rules:['final-consonant','tone-mark','special-vowel'],explanation:'น้ำ = water.'},
   {id:'sawasdee',thai:'สวัสดี',romanizations:['sa-wat-dii','sawasdee'],meaning:'hello',emoji:'🙏',level:'advanced',lessonId:'advanced-2',consonants:['ส','ว','ส','ด'],vowels:['ี'],rules:['multi-syllable','implicit-o'],explanation:'สวัสดี — decode syllable by syllable.'},
-  {id:'khopkhun',thai:'ขอบคุณ',romanizations:['khop-khun','khopkhun'],meaning:'thank you',emoji:'💝',level:'advanced',lessonId:'advanced-2',consonants:['ข','บ','ค','น'],vowels:[],rules:['final-consonant','multi-syllable','implicit-o'],explanation:'ขอบคุณ — two closed syllables.'},
+  {id:'khopkhun',thai:'ขอบคุณ',romanizations:['khop-khun','khopkhun'],meaning:'thank you',emoji:'💝',level:'advanced',lessonId:'advanced-2',consonants:['ข','บ','ค','น'],vowels:[],rules:['final-consonant','final-sound-map','multi-syllable','implicit-o'],explanation:'ขอบคุณ — first syllable ends บ→p; two closed syllables.'},
   {id:'ahaan',thai:'อาหาร',romanizations:['aa-haan','ahaan'],meaning:'food',emoji:'🍲',level:'advanced',lessonId:'advanced-2',consonants:['อ','ห','ร','น'],vowels:['า'],rules:['vowel-carrier','final-consonant','multi-syllable','implicit-o'],explanation:'อาหาร — three pieces.'},
   {id:'kho',thai:'ขอ',romanizations:['kho'],meaning:'ask / request',emoji:'🙏',level:'advanced',lessonId:'advanced-2',consonants:['ข','อ'],vowels:[],rules:['vowel-carrier','implicit-o'],explanation:'ขอ = ask.'},
   {id:'som',thai:'ส้ม',romanizations:['som'],meaning:'orange (fruit)',emoji:'🍊',level:'advanced',lessonId:'advanced-2',consonants:['ส','ม'],vowels:['้'],rules:['final-consonant','tone-mark','implicit-o'],explanation:'ส้ม = orange.'},
@@ -236,8 +236,8 @@ const WORDS = [
   {id:'gaafae',thai:'กาแฟ',romanizations:['gaafae','kaafae'],meaning:'coffee',emoji:'☕',level:'advanced',lessonId:'advanced-7',consonants:['ก','ฟ'],vowels:['า','แ-'],rules:['vowel-before','multi-syllable'],explanation:'กา + แฟ = coffee.'},
   {id:'thanon',thai:'ถนน',romanizations:['tha-non','thanon'],meaning:'road',emoji:'🛣️',level:'advanced',lessonId:'advanced-7',consonants:['ถ','น','น'],vowels:[],rules:['final-consonant','implicit-o','multi-syllable'],explanation:'ถนน = road.'},
   {id:'roongraem',thai:'โรงแรม',romanizations:['roong-raem','roongraem'],meaning:'hotel',emoji:'🏨',level:'advanced',lessonId:'advanced-7',consonants:['ร','ง','ร','ม'],vowels:['โ-','แ-'],rules:['vowel-before','final-consonant','multi-syllable'],explanation:'โรง + แรม = hotel.'},
-  {id:'bpeert',thai:'เปิด',romanizations:['bpeert','pert','peert'],meaning:'open',emoji:'🔓',level:'advanced',lessonId:'advanced-7',consonants:['ป','ด'],vowels:['เ-'],rules:['vowel-before','final-consonant'],explanation:'เปิด — final ด = t.'},
-  {id:'bpit',thai:'ปิด',romanizations:['bpit','pit'],meaning:'closed',emoji:'🔒',level:'advanced',lessonId:'advanced-7',consonants:['ป','ด'],vowels:['ิ'],rules:['final-consonant'],explanation:'ปิด — final ด = t.'},
+  {id:'bpeert',thai:'เปิด',romanizations:['bpeert','pert','peert'],meaning:'open',emoji:'🔓',level:'advanced',lessonId:'advanced-7',consonants:['ป','ด'],vowels:['เ-'],rules:['vowel-before','final-consonant','final-sound-map'],explanation:'เปิด — final ด→t (not “d”).'},
+  {id:'bpit',thai:'ปิด',romanizations:['bpit','pit'],meaning:'closed',emoji:'🔒',level:'advanced',lessonId:'advanced-7',consonants:['ป','ด'],vowels:['ิ'],rules:['final-consonant','final-sound-map'],explanation:'ปิด — final ด→t (not “d”).'},
   {id:'khao2',thai:'เข้า',romanizations:['khao'],meaning:'enter',emoji:'🚪',level:'advanced',lessonId:'advanced-7',consonants:['ข','อ'],vowels:['เ-','้'],rules:['vowel-before','vowel-carrier','tone-mark'],explanation:'เข้า = enter.'},
   {id:'awk',thai:'ออก',romanizations:['awk','ok'],meaning:'exit',emoji:'🚪',level:'advanced',lessonId:'advanced-7',consonants:['อ','ก'],vowels:[],rules:['vowel-carrier','final-consonant','implicit-o'],explanation:'ออก = exit.'},
   {id:'thiang',thai:'เที่ยง',romanizations:['thiang'],meaning:'noon',emoji:'🕛',level:'advanced',lessonId:'advanced-7',consonants:['ท','ย','ง'],vowels:['เ-','ี'],rules:['vowel-before','final-consonant'],explanation:'เที่ยง = noon.'},
@@ -344,9 +344,12 @@ const LESSONS = [
     teachingCards:[{title:'The ao vowel',body:'เ + า together make the ao sound. เมา = mao (drunk), เรา = rao (we).'}],
     examples:['mao','bao','rao','ao'],practiceWordIds:['mao','bao','rao','ao']},
   {id:'medium-9',level:'medium',order:20,title:'Final consonants deep dive',unlockAfter:'medium-8',isBoss:false,
-    introduces:{consonants:[],vowels:[],rules:[]},
-    teachingCards:[{title:'Final sounds — map them',body:'Until now closed practice mostly used น ม ง (sound stays n/m/ng) and ก as k. New rule: some finals change sound — ด/ต → t, บ/ป → p. You will meet ปิด (bpit) later. Next lesson adds the hidden short o.'}],
-    examples:['maak','gin','nom','bon','mong'],practiceWordIds:['maak','gin','nom','bon','mong']},
+    introduces:{consonants:[],vowels:[],rules:['final-sound-map']},
+    teachingCards:[
+      {title:'Final sounds — map them',body:'Until now closed practice mostly used น ม ง (sound stays n/m/ng) and ก as k. Some finals change sound: ด/ต → t, บ/ป → p, and ร/ล → n. The letter you see is not always the sound you hear.'},
+      {title:'Critical: final ร and ล sound like n',body:'ร is “r” at the start of a syllable (รา = raa), but as a final it sounds like n — เวร = ween, not “weer”. Same for ล: นิล = nin, not “nil” as an English L ending. Memorise: final ร/ล → n.'},
+    ],
+    examples:['we','ni','khii','maak','gin'],practiceWordIds:['we','ni','khii','maak','gin']},
   {id:'medium-10',level:'medium',order:21,title:'Implicit short o',unlockAfter:'medium-9',isBoss:false,
     introduces:{consonants:[],vowels:[],rules:['implicit-o']},
     teachingCards:[{title:'Hidden vowel o',body:'If two consonants appear without a written vowel, Thai often inserts a short o. นม = nom (milk), คน = khon (person).'}],
