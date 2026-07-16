@@ -2105,7 +2105,7 @@ function renderLessonView() {
     stageClass += ' lesson-stage-wide';
     body = `<div class="slide-body"><div class="panel teach-card anim-card">
       <h3>${formatMixedThai(card.title)}</h3>
-      <p>${formatMixedThai(card.body, 'thai-glyph')}</p>
+      <p class="teach-copy">${formatMixedThai(card.body, 'thai-glyph')}</p>
     </div></div>`;
   } else if (slide.type === 'example' || slide.type === 'practice') {
     const w = WORDS.find(x => x.id === slide.wordId);
