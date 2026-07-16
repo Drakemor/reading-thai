@@ -256,6 +256,13 @@ function wordIsKnown(w, known) {
   if (wordNeedsLeadingH(w) && !known.rules.has('leading-h')) return false;
   // Hard gate letter≠sound finals (เวร, นิล, คีบ, ปิด, …) until medium-9 map is taught
   if (wordNeedsFinalSoundMap(w) && !known.rules.has('final-sound-map')) return false;
+  // Extra safety: never serve final-sound-map words unless that lesson was finished
+  // (or we are currently in it). Stops revision leaks if unlocks skip ahead.
+  if (wordNeedsFinalSoundMap(w)
+      && state.currentLessonId !== 'medium-9'
+      && !state.completedLessons.includes('medium-9')) {
+    return false;
+  }
   // Hard gate mai han-akat (ั) words like ฟัน / สวัสดี until the mark is taught
   if (wordNeedsMaiHanAkat(w) && !known.vowels.has('ั')) return false;
   // Hard gate -วย (ว as ua vowel) until taught — สวย is not “implicit o”
@@ -265,7 +272,9 @@ function wordIsKnown(w, known) {
 
 function getKnownBefore(lesson) {
   const k = {consonants:new Set(),vowels:new Set(),rules:new Set()};
-  LESSONS.filter(l => l.order < lesson.order).forEach(l => {
+  // Only grant material from lessons the learner has actually finished —
+  // never from later curriculum definitions they have not completed.
+  LESSONS.filter(l => l.order < lesson.order && state.completedLessons.includes(l.id)).forEach(l => {
     l.introduces.consonants.forEach(s=>k.consonants.add(s));
     l.introduces.vowels.forEach(s=>k.vowels.add(s));
     l.introduces.rules.forEach(s=>k.rules.add(s));
