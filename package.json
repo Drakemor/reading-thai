@@ -1,0 +1,15 @@
+{
+  "name": "reading-thai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Thai Reading Quest — learn to read Thai script in the browser",
+  "scripts": {
+    "start": "npx --yes serve -l 4173 .",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "smoke": "node scripts/smoke-survival.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.54.0",
+    "serve-handler": "^6.1.6"
+  }
+}
