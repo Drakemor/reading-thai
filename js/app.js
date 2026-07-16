@@ -109,10 +109,51 @@ function getKnownSymbols() {
   return {consonants:c, vowels:v, rules:r};
 }
 
+/** Symbols/rules unlocked by progress so far (completed + current lesson). */
+function getProgressKnown() {
+  const k = {consonants:new Set(), vowels:new Set(), rules:new Set()};
+  const cur = LESSONS.find(l => l.id === state.currentLessonId);
+  const maxOrder = cur ? cur.order : Infinity;
+  LESSONS.forEach(l => {
+    if (l.order > maxOrder) return;
+    if (!state.completedLessons.includes(l.id) && l.id !== state.currentLessonId && !state.unlockedLessons.includes(l.id)) return;
+    l.introduces.consonants.forEach(s => k.consonants.add(s));
+    l.introduces.vowels.forEach(s => k.vowels.add(s));
+    l.introduces.rules.forEach(s => k.rules.add(s));
+  });
+  return k;
+}
+
+/** Drop weak/SRS entries for words that use untaught rules (e.g. old หมู before leading-h). */
+function pruneUntaughtProgressWords() {
+  const known = getProgressKnown();
+  const beforeWeak = state.weakWords.length;
+  state.weakWords = (state.weakWords || []).filter(w => {
+    const word = WORDS.find(x => x.id === w.id);
+    return word && wordIsKnown(word, known);
+  });
+  if (state.failMemory) {
+    Object.keys(state.failMemory).forEach(id => {
+      const word = WORDS.find(x => x.id === id);
+      if (!word || !wordIsKnown(word, known)) delete state.failMemory[id];
+    });
+  }
+  if (state.weakWords.length !== beforeWeak) saveState();
+}
+
+function wordNeedsLeadingH(w) {
+  if (!w?.consonants?.length) return false;
+  // True leading-ห cluster: ห + sonorant (หมู, หนู, หมา, หงิก). Not plain หา, and not mid-word ห in อาหาร.
+  const sonorants = new Set(['ม', 'น', 'ง', 'ว', 'ย', 'ร', 'ล']);
+  return w.consonants[0] === 'ห' && sonorants.has(w.consonants[1]);
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
   if (!w.rules.every(s => known.rules.has(s))) return false;
+  // Hard gate even if a word forgot the leading-h rule tag
+  if (wordNeedsLeadingH(w) && !known.rules.has('leading-h')) return false;
   return true;
 }
 
@@ -230,9 +271,12 @@ function buildConfusingChooseQuestion(word, twinWord, font) {
 }
 
 function getActiveConfusingPairs(known) {
-  return (typeof CONFUSING_PAIRS !== 'undefined' ? CONFUSING_PAIRS : []).filter(p =>
-    known.consonants.has(p.a) && known.consonants.has(p.b)
-  );
+  return (typeof CONFUSING_PAIRS !== 'undefined' ? CONFUSING_PAIRS : []).filter(p => {
+    const need = p.knownAs || { consonants: [p.a, p.b] };
+    const consOk = (need.consonants || []).every(s => known.consonants.has(s));
+    const vowsOk = (need.vowels || []).every(s => known.vowels.has(s));
+    return consOk && vowsOk;
+  });
 }
 
 function confusingPairJobs(pair, known) {
@@ -793,7 +837,7 @@ function renderContrastSlide(pair) {
   if (!pair) return '';
   return `<div class="slide-body"><div class="contrast-slide anim-card">
     <p class="contrast-banner">Stop — these look alike</p>
-    <h2 class="contrast-title">${pair.a} <span class="contrast-vs">vs</span> ${pair.b}</h2>
+    <h2 class="contrast-title"><span class="font-thai-looped">${pair.a}</span> <span class="contrast-vs">vs</span> <span class="font-thai-looped">${pair.b}</span></h2>
     <p class="contrast-tip">${pair.tip}</p>
     <div class="contrast-pair-grid">
       <div class="contrast-glyph-card contrast-glyph-a">
@@ -811,7 +855,7 @@ function renderContrastSlide(pair) {
         <p class="contrast-roman">${pair.bSound}</p>
       </div>
     </div>
-    <p class="contrast-notch">Find the notch on <span class="font-thai-looped">${pair.b}</span> — that is how you tell them apart.</p>
+    <p class="contrast-notch">${pair.tellApart || ''}</p>
     <div class="contrast-compare-grid">
       ${pair.compare.map(c => `
         <div class="contrast-compare-item">
@@ -821,7 +865,7 @@ function renderContrastSlide(pair) {
           <p class="contrast-compare-note">${c.note}</p>
         </div>`).join('')}
     </div>
-    <p class="contrast-footer">Remember: โม = <strong>mo</strong> · โท = <strong>tho</strong> — you will be tested on this.</p>
+    <p class="contrast-footer">${pair.footer || ''}</p>
   </div></div>`;
 }
 
@@ -1192,7 +1236,10 @@ function formatPromptHtml(text, fontClass) {
 
 function renderRulePrompt(prompt, font) {
   const fc = getFontClass(font);
-  const m = String(prompt).match(/^([\u0E00-\u0E7F]+)(\s*)(.*)$/);
+  const text = String(prompt);
+  // Avoid hero breakdown for formula-style prompts like "เ + consonant + ะ..."
+  const formulaLike = /\+/.test(text) || /makes one sound/i.test(text);
+  const m = !formulaLike ? text.match(/^([\u0E00-\u0E7F]{2,})(\s*)(.*)$/) : null;
   if (m && m[1]) {
     const rest = (m[3] || '').trim() || 'is read as...';
     return `<div class="text-center mb-5 space-y-3">
@@ -1200,7 +1247,7 @@ function renderRulePrompt(prompt, font) {
       <p class="text-slate-400 text-lg">${formatPromptHtml(rest, fc)}</p>
     </div>`;
   }
-  return `<p class="text-slate-300 mb-4 text-lg leading-relaxed">${formatPromptHtml(prompt, fc)}</p>`;
+  return `<p class="text-slate-300 mb-4 text-lg leading-relaxed text-center">${formatPromptHtml(prompt, fc)}</p>`;
 }
 
 function escAttr(s) {
@@ -1214,12 +1261,12 @@ function optionBtnClass(opt, extra) {
 
 function renderOptionButtons(options, qType) {
   const btns = options.map((o, i) =>
-    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')} anim-opt" style="animation-delay:${i*45}ms" data-option-index="${i}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
+    `<button type="button" class="${optionBtnClass(o, i===selectedOptionIdx?'test-option-selected':'')}" style="animation-delay:${i*45}ms" data-option-index="${i}" tabindex="${i===selectedOptionIdx?0:-1}" onclick="submitAnswer('${escAttr(o)}')">${o}</button>`
   );
   if (options.length === 4) {
-    return `<div class="grid grid-cols-2 gap-3">${btns.join('')}</div>`;
+    return `<div class="grid grid-cols-2 gap-3" role="listbox" aria-label="Answer choices">${btns.join('')}</div>`;
   }
-  return `<div class="space-y-3">${btns.join('')}</div>`;
+  return `<div class="space-y-3" role="listbox" aria-label="Answer choices">${btns.join('')}</div>`;
 }
 
 function buildRuleQuestion(known, requiredRuleId) {
@@ -1238,9 +1285,9 @@ function buildRuleQuestion(known, requiredRuleId) {
     {q:'Which symbol is the mai ek tone mark?', opts:['่','้','๊','๋'], a:'่', requires:{vowels:['่']}},
     {q:'The silent mark ์ makes a letter...', opts:['silent','louder','a vowel'], a:'silent', requires:{rules:['silent-mark']}},
     {q:'เก is read as...', opts:['ke/ge','ek','gek'], a:'ke/ge', requires:{vowels:['เ-'],consonants:['ก']}},
-    {q:'เ + consonant + ะ makes one sound. เกะ is...', opts:['ke/ge (short e)','kea (e + a)','ek'], a:'ke/ge (short e)', requires:{rules:['compound-short-e']}},
-    {q:'In เละ, the letters เ…ะ mean...', opts:['one short e (le)','e then a (lea)','long aa'], a:'one short e (le)', requires:{rules:['compound-short-e'],consonants:['ล']}},
-    {q:'โ + consonant + ะ makes one sound. โกะ is...', opts:['ko/go (short o)','koa (o + a)','ok'], a:'ko/go (short o)', requires:{rules:['compound-short-o']}},
+    {q:'เกะ is read as...', opts:['ke/ge (short e)','kea (e + a)','ek'], a:'ke/ge (short e)', requires:{rules:['compound-short-e']}},
+    {q:'เละ is read as...', opts:['le (short e)','lea (e then a)','laa'], a:'le (short e)', requires:{rules:['compound-short-e'],consonants:['ล']}},
+    {q:'โกะ is read as...', opts:['ko/go (short o)','koa (o + a)','ok'], a:'ko/go (short o)', requires:{rules:['compound-short-o']}},
   ];
   let eligible = rules.filter(r => ruleIsAvailable(r, known));
   if (requiredRuleId) {
@@ -1427,7 +1474,9 @@ function renderLastFeedback() {
   if (ans.q.type === 'rule') {
     if (!ans.correct) answerLine = `<span class="${muted}">Answer:</span> <strong class="text-white">${ans.q.answer}</strong>`;
   } else if (word?.romanizations?.[0]) {
-    answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${word.romanizations.join('/')}</strong>`;
+    const primary = word.romanizations[0];
+    const alts = word.romanizations.slice(1);
+    answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${primary}</strong>${alts.length ? ` <span class="${muted}">(also ${alts.join('/')})</span>` : ''}`;
   }
   const thai = word?.thai
     ? `<span class="${getFontClass(ans.font)} fb-thai anim-thai">${word.thai}</span>`
@@ -1525,7 +1574,11 @@ function importProgress() {
 }
 
 function startReview() {
-  let words = state.weakWords.map(w => ({...w, word:WORDS.find(x=>x.id===w.id)})).filter(w=>w.word);
+  pruneUntaughtProgressWords();
+  const known = getProgressKnown();
+  let words = state.weakWords
+    .map(w => ({...w, word:WORDS.find(x=>x.id===w.id)}))
+    .filter(w => w.word && wordIsKnown(w.word, known));
   // Prefer SRS-due fails at the front of the review queue
   words.sort((a, b) => srsPriority(b.id) - srsPriority(a.id));
   if (words.length === 0) { alert('No weak words to review!'); return; }
@@ -1629,38 +1682,44 @@ function getTestHint(q) {
   if (q.type === 'type_roman' || q.type === 'build_syllable') return 'Type your answer, then press Enter';
   const n = q.options ? q.options.length : 0;
   if (n <= 1) return 'Press Enter to select';
-  return '↑ ↓ to move · Enter to select · 1–' + Math.min(n, 9) + ' quick pick';
+  if (n === 4) return '↑ ↓ ← → move · Enter select · 1–4 quick pick';
+  return '↑ ↓ move · Enter to select · 1–' + Math.min(n, 9) + ' quick pick';
 }
 
 function getTestOptions() {
   return [...document.querySelectorAll('.test-option')];
 }
 
-function highlightOption(idx) {
+function highlightOption(idx, { wrap = false } = {}) {
   const opts = getTestOptions();
   if (!opts.length) return;
-  const next = ((idx % opts.length) + opts.length) % opts.length;
+  let next = idx | 0;
+  if (wrap) {
+    next = ((next % opts.length) + opts.length) % opts.length;
+  } else {
+    next = Math.min(opts.length - 1, Math.max(0, next));
+  }
   if (next !== selectedOptionIdx) ChipAudio.uiSelect();
   selectedOptionIdx = next;
   opts.forEach((el, i) => {
     el.classList.toggle('test-option-selected', i === selectedOptionIdx);
+    el.tabIndex = i === selectedOptionIdx ? 0 : -1;
   });
   opts[selectedOptionIdx].focus();
 }
 
 function highlightOptionGrid(deltaRow, deltaCol) {
   const opts = getTestOptions();
-  if (opts.length !== 4) { // fallback to linear
-    highlightOption(selectedOptionIdx + (deltaRow !== 0 || deltaCol > 0 ? 1 : -1));
+  if (opts.length !== 4) {
+    highlightOption(selectedOptionIdx + (deltaRow > 0 || deltaCol > 0 ? 1 : -1), { wrap: false });
     return;
   }
-  const cols = 2, rows = 2;
+  const cols = 2;
   const curRow = Math.floor(selectedOptionIdx / cols);
   const curCol = selectedOptionIdx % cols;
-  const nextRow = Math.min(rows - 1, Math.max(0, curRow + deltaRow));
-  const nextCol = Math.min(cols - 1, Math.max(0, curCol + deltaCol));
-  const nextIdx = nextRow * cols + nextCol;
-  highlightOption(nextIdx);
+  const nextRow = Math.min(1, Math.max(0, curRow + deltaRow));
+  const nextCol = Math.min(1, Math.max(0, curCol + deltaCol));
+  highlightOption(nextRow * cols + nextCol, { wrap: false });
 }
 function submitSelectedOption() {
   const opts = getTestOptions();
@@ -2013,7 +2072,7 @@ function renderTest() {
 
   if (q.type === 'rule') {
     content = `${renderRulePrompt(q.prompt, q.font)}
-      <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
+      ${renderOptionButtons(q.options)}`;
   } else if (q.type === 'build_syllable') {
     // Render like normal typed reading without showing decomposition
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
@@ -2022,7 +2081,7 @@ function renderTest() {
   } else if (q.type === 'choose_pron') {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
-      <div class="space-y-3">${renderOptionButtons(q.options)}</div>`;
+      ${renderOptionButtons(q.options)}`;
   } else {
     content = `<p class="text-6xl sm:text-7xl md:text-8xl text-center mb-6 ${fc} anim-thai">${q.word.thai}</p>
       <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
@@ -2047,16 +2106,22 @@ function renderTest() {
 }
 
 function renderReview() {
+  pruneUntaughtProgressWords();
+  const known = getProgressKnown();
+  const weak = state.weakWords.filter(w => {
+    const word = WORDS.find(x => x.id === w.id);
+    return word && wordIsKnown(word, known);
+  });
   const cur = LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
   return `<div class="space-y-6 anim-screen anim-stagger">
     <button type="button" class="text-slate-400 text-sm text-left" onclick="goScreen('dashboard')">← Dashboard (Esc)</button>
     ${renderProgressHeader(cur)}
     <h1 class="text-2xl font-bold">Review Weak Words</h1>
-    <p class="text-slate-400">${state.weakWords.length} weak words</p>
+    <p class="text-slate-400">${weak.length} weak words</p>
     <div class="grid gap-3">
       <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="startReview()">Start Review (Enter)</button>
     </div>
-    <div class="space-y-2">${state.weakWords.slice(0,20).map(w => {
+    <div class="space-y-2">${weak.slice(0,20).map(w => {
       const word = WORDS.find(x=>x.id===w.id);
       return word ? `<div class="bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 anim-card">
         ${renderWordAllFonts(word.thai, 'text-2xl sm:text-3xl')}
@@ -2130,6 +2195,12 @@ function handleTestKey(e) {
     return;
   }
   if (!opts.length) return;
+  // Tab moves browser focus without updating selection, so Enter submits the wrong answer.
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    highlightOption(selectedOptionIdx, { wrap: false });
+    return;
+  }
   let handled = false;
   if (opts.length === 4) {
     if (e.key === 'ArrowRight') { e.preventDefault(); highlightOptionGrid(0, +1); handled = true; }
@@ -2137,14 +2208,14 @@ function handleTestKey(e) {
     else if (e.key === 'ArrowDown') { e.preventDefault(); highlightOptionGrid(+1, 0); handled = true; }
     else if (e.key === 'ArrowUp') { e.preventDefault(); highlightOptionGrid(-1, 0); handled = true; }
   } else {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1); handled = true; }
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1); handled = true; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); highlightOption(selectedOptionIdx + 1, { wrap: false }); handled = true; }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); highlightOption(selectedOptionIdx - 1, { wrap: false }); handled = true; }
   }
   if (handled) return;
   if (e.key === 'Enter') { e.preventDefault(); submitSelectedOption(); }
   else if (e.key >= '1' && e.key <= '9') {
     const idx = parseInt(e.key, 10) - 1;
-    if (idx < opts.length) { e.preventDefault(); highlightOption(idx); submitSelectedOption(); }
+    if (idx < opts.length) { e.preventDefault(); highlightOption(idx, { wrap: false }); submitSelectedOption(); }
   }
 }
 
@@ -2331,6 +2402,7 @@ async function bootstrap() {
       onStateMerged: merged => { state = merged; },
     });
   }
+  pruneUntaughtProgressWords();
   if (document.getElementById('app')) render();
 }
 
