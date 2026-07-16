@@ -38,7 +38,7 @@ let selectedOptionIdx = 0;
 let lessonSlideIdx = 0;
 let lessonSlides = null;
 let navBtnIdx = 0;
-let animCtx = { slideDir: 0 };
+let animCtx = { slideDir: 0, timerId: null };
 
 function loadState() {
   try {
@@ -86,7 +86,10 @@ function renderWordAllFonts(thai, sizeClass) {
 }
 
 function normRoman(s) {
-  return s.toLowerCase().trim().replace(/\s+/g,' ').replace(/-/g,'');
+  // Normalize input and canonical romanizations to letters only (no spaces/punct/symbols)
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, '');
 }
 function checkRoman(input, word) {
   const n = normRoman(input);
@@ -849,6 +852,7 @@ function startTest(lessonId, isBoss) {
     questions,
     current: 0,
     score: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal,
     answers: [],
@@ -860,6 +864,7 @@ function startTest(lessonId, isBoss) {
     awaitingResults: false,
   };
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1006,6 +1011,7 @@ function startSurvival() {
     current: 0,
     score: 0,
     survivalPoints: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal: SURVIVAL_HEARTS,
     answers: [],
@@ -1017,6 +1023,7 @@ function startSurvival() {
     awaitingResults: false,
   };
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1303,6 +1310,7 @@ function continueAfterDeath() {
 
 function submitAnswer(answer) {
   if (!testSession || testSession.dying || testSession.finished || testSession.awaitingResults) return;
+  const startedAt = testSession.questionStartMs || Date.now();
   const q = testSession.questions[testSession.current];
   let correct = false;
   if (q.type === 'type_roman') correct = checkRoman(answer, q.word);
@@ -1312,6 +1320,13 @@ function submitAnswer(answer) {
 
   const font = resolveFont(q.font);
   recordAttempt(correct, font, q.type);
+  const durationMs = Math.max(0, Date.now() - startedAt);
+  // Simple speed bonus: very fast +3, fast +1
+  let speedBonus = 0;
+  if (correct) {
+    if (durationMs <= 1500) speedBonus = 3;
+    else if (durationMs <= 3000) speedBonus = 1;
+  }
   if (q.word && q.word.id && q.word.id !== 'rule') {
     const m = getMastery(q.word.id, font);
     if (correct) {
@@ -1325,6 +1340,10 @@ function submitAnswer(answer) {
   }
   if (correct) {
     testSession.score++;
+    if (speedBonus) {
+      testSession.speedBonusTotal = (testSession.speedBonusTotal || 0) + speedBonus;
+      state.totalScore = (state.totalScore || 0) + speedBonus;
+    }
     if (testSession.isSurvival && q.word) {
       testSession.survivalPoints = (testSession.survivalPoints || 0) + survivalPointsForWord(q.word);
     }
@@ -1335,10 +1354,12 @@ function submitAnswer(answer) {
   if (correct) ChipAudio.testCorrect();
   else ChipAudio.testWrong();
   flashScreen(correct ? 'success' : 'fail');
-  testSession.answers.push({q, answer, correct, font});
-  testSession.lastFeedback = {q, answer, correct, font};
+  testSession.answers.push({q, answer, correct, font, durationMs, speedBonus});
+  testSession.lastFeedback = {q, answer, correct, font, durationMs, speedBonus};
   testSession.current++;
   selectedOptionIdx = 0;
+  // Start timer for next question
+  testSession.questionStartMs = Date.now();
   saveState();
 
   if (testSession.isSurvival) {
@@ -1417,6 +1438,7 @@ function renderLastFeedback() {
     <div class="fb-body">
       <p class="fb-label">${label}${thai ? ` · ${thai}` : ''}</p>
       ${answerLine ? `<p class="fb-answer">${answerLine}</p>` : ''}
+      ${typeof ans.speedBonus === 'number' ? `<p class="text-xs text-amber-300">${ans.speedBonus>0?`+${ans.speedBonus} speed bonus`:''}${ans.durationMs!=null?`${ans.speedBonus>0?' · ':''}${(ans.durationMs/1000).toFixed(1)}s` : ''}</p>` : ''}
       ${meaning ? `<p class="fb-meaning">${meaning}</p>` : ''}
     </div>
   </div>`;
@@ -1517,6 +1539,7 @@ function startReview() {
     questions: qs,
     current: 0,
     score: 0,
+    speedBonusTotal: 0,
     mistakes: 0,
     heartsTotal,
     answers: [],
@@ -1531,6 +1554,7 @@ function startReview() {
   selectedOptionIdx = 0;
   animCtx.slideDir = 0;
   currentScreen = 'test';
+  testSession.questionStartMs = Date.now();
   render();
 }
 
@@ -1632,6 +1656,17 @@ function focusTestUI() {
   if (currentScreen !== 'test' || !testSession) return;
   requestAnimationFrame(() => {
     if (testSession.dying) { focusKbButton(navBtnIdx || 0); return; }
+    // Start/update per-question timer
+    if (animCtx.timerId) { try { clearInterval(animCtx.timerId); } catch(e) {} animCtx.timerId = null; }
+    const timerEl = document.getElementById('q-timer');
+    if (timerEl && testSession.questionStartMs) {
+      const update = () => {
+        const ms = Math.max(0, Date.now() - (testSession.questionStartMs || Date.now()));
+        timerEl.textContent = (ms / 1000).toFixed(1);
+      };
+      update();
+      animCtx.timerId = setInterval(update, 100);
+    }
     if (testSession.awaitingResults) { focusKbButton(navBtnIdx || 0); return; }
     if (testSession.finished) { focusKbButton(navBtnIdx); return; }
     const inp = document.getElementById('answer-input');
@@ -1941,6 +1976,7 @@ function renderTest() {
       <h1 class="anim-result-item text-3xl font-bold" style="animation-delay:80ms">${testSession.passed?'Passed!':'Keep practicing'}</h1>
       <p class="anim-score text-6xl font-bold ${testSession.passed?'text-emerald-400':'text-rose-400'}" style="animation-delay:140ms">${pct}%</p>
       <p class="anim-result-item text-slate-400" style="animation-delay:220ms">${testSession.score}/${testSession.questions.length} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}</p>
+      ${testSession.speedBonusTotal ? `<p class="anim-result-item text-amber-300" style="animation-delay:240ms">Speed bonus: +${testSession.speedBonusTotal}</p>` : ''}
       <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
       ${renderTestSummary()}
       ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
@@ -1986,6 +2022,7 @@ function renderTest() {
         ? `Points: ${testSession.survivalPoints || 0}`
         : `Score: ${testSession.score}`}</span>
     </div>
+    <div class="text-right text-xs text-slate-500" aria-live="off">Time: <span id="q-timer">0.0</span>s</div>
     <div class="h-2 bg-slate-800 rounded-full anim-progress"><div class="h-2 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
     ${renderLastFeedback()}
     <div class="anim-test-content">${content}</div>
