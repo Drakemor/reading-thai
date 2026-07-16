@@ -49,6 +49,7 @@ vm.runInContext(
     submitAnswer, continueToResults, finishTest, holdLastAnswerBeforeResults,
     displayThaiText, formatMixedThai,
     wordIsKnown, getKnownBefore, wordNeedsFinalSoundMap, wordNeedsMaiHanAkat, wordNeedsWVowelUa,
+    wordNeedsLeadingH, migrateCurriculumState, buildTestKnown,
     get state() { return state; },
     set state(v) { state = v; },
     get testSession() { return testSession; },
@@ -171,57 +172,96 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   console.assert(a1.practiceWordIds.includes('we'), 'advanced-1 practices เวร before its test');
 }
 
-// Mai han-akat (ั) must be taught before ฟัน / สวัสดี
+// Old lesson 21 split: consonants first, then ถ/ผ/ฝ, then leading-ห + ั
 {
-  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsMaiHanAkat } = sandbox.__TRQ;
+  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsMaiHanAkat, wordNeedsLeadingH, buildTestKnown, migrateCurriculumState, defaultState } = sandbox.__TRQ;
+  const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  const a1b = LESSONS.find(l => l.id === 'advanced-1b');
+  const a1c = LESSONS.find(l => l.id === 'advanced-1c');
+  const a2 = LESSONS.find(l => l.id === 'advanced-2');
+  console.assert(a1 && a1b && a1c, 'advanced-1 split into three lessons');
+  console.assert(a1b.unlockAfter === 'advanced-1', '1b unlocks after 1');
+  console.assert(a1c.unlockAfter === 'advanced-1b', '1c unlocks after 1b');
+  console.assert(a2.unlockAfter === 'advanced-1c', 'advanced-2 unlocks after 1c');
+  console.assert(a1.introduces.consonants.join('') === 'ขสฟซ', 'advanced-1 teaches ข ส ฟ ซ');
+  console.assert(!a1.introduces.vowels.includes('ั'), 'advanced-1 does not teach ั');
+  console.assert(!a1.introduces.rules.includes('leading-h'), 'advanced-1 does not teach leading-h');
+  console.assert(a1b.introduces.consonants.join('') === 'ถผฝ', 'advanced-1b teaches ถ ผ ฝ');
+  console.assert(a1c.introduces.vowels.includes('ั'), 'advanced-1c teaches ั');
+  console.assert(a1c.introduces.rules.includes('leading-h'), 'advanced-1c teaches leading-h');
+
   const faa = WORDS.find(w => w.id === 'faa');
   const fuu = WORDS.find(w => w.id === 'fuu');
+  const muu = WORDS.find(w => w.id === 'muu');
   const sawasdee = WORDS.find(w => w.id === 'sawasdee');
-  const a1 = LESSONS.find(l => l.id === 'advanced-1');
-  seedCompletedBefore('advanced-1');
-  const before = getKnownBefore(a1);
+  console.assert(faa.lessonId === 'advanced-1c', 'ฟัน lives in advanced-1c');
+  console.assert(muu.lessonId === 'advanced-1c', 'หมู lives in advanced-1c');
   console.assert(faa.thai === 'ฟัน' && faa.vowels.includes('ั'), 'ฟัน tagged with ั');
   console.assert(!faa.rules.includes('implicit-o'), 'ฟัน is not implicit-o');
   console.assert(wordNeedsMaiHanAkat(faa), 'ฟัน needs mai han-akat');
   console.assert(wordNeedsMaiHanAkat(sawasdee), 'สวัสดี needs mai han-akat');
-  console.assert(!wordIsKnown(faa, before), 'ฟัน blocked before advanced-1');
-  console.assert(a1.introduces.vowels.includes('ั'), 'advanced-1 teaches ั');
-  console.assert(WORDS.find(w => w.id === 'fuu')?.thai === 'ฟู', 'ฟ example word is ฟู');
-  // ฟู only needs ฟ + ู — available once those consonants/vowels are known via advanced-1 progress
-  const during = {
-    consonants: new Set([...before.consonants, ...a1.introduces.consonants]),
-    vowels: new Set([...before.vowels, ...a1.introduces.vowels]),
-    rules: new Set([...before.rules, ...a1.introduces.rules]),
-  };
-  console.assert(wordIsKnown(faa, during), 'ฟัน allowed once ั taught');
-  console.assert(wordIsKnown(fuu, during), 'ฟู allowed in advanced-1');
+  console.assert(wordNeedsLeadingH(muu), 'หมู needs leading-h');
+
+  // During advanced-1: ฟู ok, ฟัน/หมู blocked
+  seedCompletedBefore('advanced-1');
+  const duringA1 = buildTestKnown(a1);
+  console.assert(wordIsKnown(fuu, duringA1), 'ฟู allowed in advanced-1');
+  console.assert(!wordIsKnown(faa, duringA1), 'ฟัน blocked during advanced-1');
+  console.assert(!wordIsKnown(muu, duringA1), 'หมู blocked during advanced-1');
+
+  // During advanced-1b: still no ั / leading-h
+  seedCompletedBefore('advanced-1b');
+  const duringA1b = buildTestKnown(a1b);
+  console.assert(!wordIsKnown(faa, duringA1b), 'ฟัน blocked during advanced-1b');
+  console.assert(!wordIsKnown(muu, duringA1b), 'หมู blocked during advanced-1b');
+  for (const id of a1b.practiceWordIds) {
+    const w = WORDS.find(x => x.id === id);
+    console.assert(wordIsKnown(w, duringA1b), `advanced-1b practice ${id} is known`);
+  }
+
+  // During advanced-1c: ฟัน + leading-ห words ok; สวัสดี still later
+  seedCompletedBefore('advanced-1c');
+  const beforeA1c = getKnownBefore(a1c);
+  const duringA1c = buildTestKnown(a1c);
+  console.assert(!wordIsKnown(faa, beforeA1c), 'ฟัน blocked before advanced-1c');
+  console.assert(wordIsKnown(faa, duringA1c), 'ฟัน allowed once ั taught');
+  console.assert(wordIsKnown(muu, duringA1c), 'หมู allowed once leading-h taught');
+  for (const id of a1c.practiceWordIds) {
+    const w = WORDS.find(x => x.id === id);
+    console.assert(wordIsKnown(w, duringA1c), `advanced-1c practice ${id} is known`);
+  }
+  console.assert(!wordIsKnown(sawasdee, duringA1c), 'สวัสดี still blocked in advanced-1c');
+
+  // Migration: old completed advanced-1 credits 1b + 1c
+  const migrated = migrateCurriculumState({
+    ...defaultState(),
+    completedLessons: ['advanced-1'],
+    unlockedLessons: ['advanced-1', 'advanced-2'],
+  });
+  console.assert(migrated.completedLessons.includes('advanced-1b'), 'migrate completes 1b');
+  console.assert(migrated.completedLessons.includes('advanced-1c'), 'migrate completes 1c');
+  console.assert(migrated.unlockedLessons.includes('advanced-2'), 'migrate keeps advanced-2 unlocked');
 }
 
-// -วย (ว as ua vowel) must not appear as “implicit o” in lesson 21
+// -วย (ว as ua vowel) must not appear as “implicit o” in early advanced
 {
-  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsWVowelUa } = sandbox.__TRQ;
+  const { WORDS, LESSONS, wordIsKnown, wordNeedsWVowelUa, buildTestKnown } = sandbox.__TRQ;
   const suay = WORDS.find(w => w.id === 'suay');
   const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  const a1c = LESSONS.find(l => l.id === 'advanced-1c');
   const a2 = LESSONS.find(l => l.id === 'advanced-2');
   seedCompletedBefore('advanced-1');
-  const beforeA1 = getKnownBefore(a1);
-  const duringA1 = {
-    consonants: new Set([...beforeA1.consonants, ...a1.introduces.consonants]),
-    vowels: new Set([...beforeA1.vowels, ...a1.introduces.vowels]),
-    rules: new Set([...beforeA1.rules, ...a1.introduces.rules]),
-  };
+  const duringA1 = buildTestKnown(a1);
   console.assert(suay.thai === 'สวย', 'สวย present');
   console.assert(wordNeedsWVowelUa(suay), 'สวย needs w-vowel-ua');
   console.assert(!suay.rules.includes('implicit-o'), 'สวย is not implicit-o');
-  console.assert(suay.lessonId === 'advanced-2', 'สวย moved to advanced-2');
+  console.assert(suay.lessonId === 'advanced-2', 'สวย lives in advanced-2');
   console.assert(!wordIsKnown(suay, duringA1), 'สวย blocked during advanced-1');
+  seedCompletedBefore('advanced-1c');
+  console.assert(!wordIsKnown(suay, buildTestKnown(a1c)), 'สวย blocked during advanced-1c');
   console.assert(a2.introduces.rules.includes('w-vowel-ua'), 'advanced-2 teaches w-vowel-ua');
-  const duringA2 = {
-    consonants: new Set([...duringA1.consonants, ...a2.introduces.consonants]),
-    vowels: new Set([...duringA1.vowels, ...a2.introduces.vowels]),
-    rules: new Set([...duringA1.rules, ...a2.introduces.rules]),
-  };
-  console.assert(wordIsKnown(suay, duringA2), 'สวย allowed once -วย taught');
+  seedCompletedBefore('advanced-2');
+  console.assert(wordIsKnown(suay, buildTestKnown(a2)), 'สวย allowed once -วย taught');
 }
 
 // Thai display: carriers for combining marks + hyphen placeholders

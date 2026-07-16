@@ -40,10 +40,32 @@ let lessonSlides = null;
 let navBtnIdx = 0;
 let animCtx = { slideDir: 0, timerId: null, cardFlip: false };
 
+/**
+ * Curriculum migrations (safe to re-run).
+ * Old monolithic advanced-1 (7 consonants + leading-ห + ั) split into
+ * advanced-1 / advanced-1b / advanced-1c. Learners who finished the old
+ * lesson keep credit for all three parts and stay unlocked into advanced-2.
+ */
+function migrateCurriculumState(s) {
+  if (!s) return s;
+  if (!Array.isArray(s.completedLessons)) s.completedLessons = [];
+  if (!Array.isArray(s.unlockedLessons)) s.unlockedLessons = ['basic-1'];
+  if (s.completedLessons.includes('advanced-1')) {
+    for (const id of ['advanced-1b', 'advanced-1c']) {
+      if (!s.completedLessons.includes(id)) s.completedLessons.push(id);
+      if (!s.unlockedLessons.includes(id)) s.unlockedLessons.push(id);
+    }
+    if (!s.unlockedLessons.includes('advanced-2')) {
+      s.unlockedLessons.push('advanced-2');
+    }
+  }
+  return s;
+}
+
 function loadState() {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (s) return {...defaultState(),...s};
+    if (s) return migrateCurriculumState({...defaultState(),...s});
   } catch(e) {}
   return defaultState();
 }
@@ -2626,9 +2648,10 @@ async function bootstrap() {
     await CloudSync.init({
       storageKey: STORAGE_KEY,
       getDefaultState: defaultState,
-      onStateMerged: merged => { state = merged; },
+      onStateMerged: merged => { state = migrateCurriculumState(merged); },
     });
   }
+  state = migrateCurriculumState(state);
   pruneUntaughtProgressWords();
   if (document.getElementById('app')) render();
 }
