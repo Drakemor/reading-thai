@@ -181,6 +181,32 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   console.assert(wordIsKnown(fuu, during), 'ฟู allowed in advanced-1');
 }
 
+// -วย (ว as ua vowel) must not appear as “implicit o” in lesson 21
+{
+  const { WORDS, LESSONS, wordIsKnown, getKnownBefore, wordNeedsWVowelUa } = sandbox.__TRQ;
+  const suay = WORDS.find(w => w.id === 'suay');
+  const a1 = LESSONS.find(l => l.id === 'advanced-1');
+  const a2 = LESSONS.find(l => l.id === 'advanced-2');
+  const beforeA1 = getKnownBefore(a1);
+  const duringA1 = {
+    consonants: new Set([...beforeA1.consonants, ...a1.introduces.consonants]),
+    vowels: new Set([...beforeA1.vowels, ...a1.introduces.vowels]),
+    rules: new Set([...beforeA1.rules, ...a1.introduces.rules]),
+  };
+  console.assert(suay.thai === 'สวย', 'สวย present');
+  console.assert(wordNeedsWVowelUa(suay), 'สวย needs w-vowel-ua');
+  console.assert(!suay.rules.includes('implicit-o'), 'สวย is not implicit-o');
+  console.assert(suay.lessonId === 'advanced-2', 'สวย moved to advanced-2');
+  console.assert(!wordIsKnown(suay, duringA1), 'สวย blocked during advanced-1');
+  console.assert(a2.introduces.rules.includes('w-vowel-ua'), 'advanced-2 teaches w-vowel-ua');
+  const duringA2 = {
+    consonants: new Set([...duringA1.consonants, ...a2.introduces.consonants]),
+    vowels: new Set([...duringA1.vowels, ...a2.introduces.vowels]),
+    rules: new Set([...duringA1.rules, ...a2.introduces.rules]),
+  };
+  console.assert(wordIsKnown(suay, duringA2), 'สวย allowed once -วย taught');
+}
+
 // Thai display: carriers for combining marks + hyphen placeholders
 {
   const { displayThaiText, formatMixedThai } = sandbox.__TRQ;
