@@ -1465,7 +1465,9 @@ function renderLastFeedback() {
   if (ans.q.type === 'rule') {
     if (!ans.correct) answerLine = `<span class="${muted}">Answer:</span> <strong class="text-white">${ans.q.answer}</strong>`;
   } else if (word?.romanizations?.[0]) {
-    answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${word.romanizations.join('/')}</strong>`;
+    const primary = word.romanizations[0];
+    const alts = word.romanizations.slice(1);
+    answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${primary}</strong>${alts.length ? ` <span class="${muted}">(also ${alts.join('/')})</span>` : ''}`;
   }
   const thai = word?.thai
     ? `<span class="${getFontClass(ans.font)} fb-thai anim-thai">${word.thai}</span>`
