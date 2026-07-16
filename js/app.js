@@ -240,6 +240,14 @@ function wordNeedsMaiHanAkat(w) {
   return !!(w?.thai && w.thai.includes('\u0E31'));
 }
 
+/** -วย pattern: ว is the ua vowel (สวย), not consonant w + implicit o. */
+function wordNeedsWVowelUa(w) {
+  if (w?.rules?.includes('w-vowel-ua')) return true;
+  if (!w?.thai) return false;
+  const base = w.thai.replace(/[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g, '');
+  return /วย/.test(base);
+}
+
 function wordIsKnown(w, known) {
   if (!w.consonants.every(s => known.consonants.has(s))) return false;
   if (!w.vowels.every(s => known.vowels.has(s))) return false;
@@ -250,6 +258,8 @@ function wordIsKnown(w, known) {
   if (wordNeedsFinalSoundMap(w) && !known.rules.has('final-sound-map')) return false;
   // Hard gate mai han-akat (ั) words like ฟัน / สวัสดี until the mark is taught
   if (wordNeedsMaiHanAkat(w) && !known.vowels.has('ั')) return false;
+  // Hard gate -วย (ว as ua vowel) until taught — สวย is not “implicit o”
+  if (wordNeedsWVowelUa(w) && !known.rules.has('w-vowel-ua')) return false;
   return true;
 }
 
@@ -1403,6 +1413,7 @@ function buildRuleQuestion(known, requiredRuleId) {
     {q:'As a final consonant, ด or ต is pronounced like...', opts:['t','d','k'], a:'t', requires:{rules:['final-sound-map']}},
     {q:'As a final consonant, บ or ป is pronounced like...', opts:['p','b','m'], a:'p', requires:{rules:['final-sound-map']}},
     {q:'The mark ั above a consonant is...', opts:['short a','long aa','a tone mark'], a:'short a', requires:{vowels:['ั']}},
+    {q:'In สวย, the letter ว is read as...', opts:['part of the uay vowel','consonant w','silent'], a:'part of the uay vowel', requires:{rules:['w-vowel-ua'],consonants:['ว','ย']}},
     {q:'If two consonants appear without a vowel, Thai often inserts...', opts:['short o','long aa','tone mark'], a:'short o', requires:{rules:['implicit-o']}},
     {q:'Which class is ก?', opts:['Mid','High','Low'], a:'Mid', requires:{rules:['consonant-class']}},
     {q:'Which class is ส?', opts:['Mid','High','Low'], a:'High', requires:{rules:['consonant-class'],consonants:['ส']}},

@@ -89,12 +89,14 @@ const SYMBOLS = [
   {symbol:'๋',type:'tone mark',sound:'(rising tone mark)',introducedIn:'advanced-3',role:'mai chattawa tone mark'},
   {symbol:'์',type:'special mark',sound:'(silent)',introducedIn:'advanced-6',role:'silent mark / garan'},
   {symbol:'ำ',type:'vowel',sound:'am',introducedIn:'advanced-2',role:'special vowel form',exampleWordId:'naam'},
+  {symbol:'-วย',type:'vowel',sound:'uay',introducedIn:'advanced-2',role:'ว as ua vowel + final ย',exampleWordId:'suay',warning:'Here ว is not consonant “w” — with final ย it makes uay. สวย = suay (beautiful).'},
 ];
 
 /**
  * WORD BANK RULES
  * - Never test letter≠sound exceptions before those rules are taught
  *   (final ด/ต → t, บ/ป → p, ร/ล → n — all gated behind medium-9 `final-sound-map`).
+ *   Also gate ั (mai han-akat) and -วย (ว as ua vowel) until those marks/patterns are taught.
  * - Prefer sonorant finals น / ม / ง early; use final ก only as k once closed syllables are taught.
  * - Every word must be a real dictionary form with a real meaning (no “(syllable)” fillers).
  * - `emoji` (1–2) is shown on the answer feedback card with the meaning.
@@ -209,7 +211,7 @@ const WORDS = [
   {id:'phaa2',thai:'ผา',romanizations:['phaa'],meaning:'cliff',emoji:'⛰️',level:'advanced',lessonId:'advanced-1',consonants:['ผ'],vowels:['า'],rules:['open-syllable'],explanation:'ผ = ph (high class).'},
   {id:'faa2',thai:'ฝา',romanizations:['faa'],meaning:'lid / wall',emoji:'🫙',level:'advanced',lessonId:'advanced-1',consonants:['ฝ'],vowels:['า'],rules:['open-syllable'],explanation:'ฝ = f (high class).'},
   {id:'khaa_tone',thai:'ข้า',romanizations:['khaa'],meaning:'I (archaic/servant) / kill',emoji:'🗡️',level:'advanced',lessonId:'advanced-1',consonants:['ข'],vowels:['า','้'],rules:['tone-mark'],explanation:'ข้า with tone mark.'},
-  {id:'suay',thai:'สวย',romanizations:['suay','suai'],meaning:'beautiful',emoji:'✨',level:'advanced',lessonId:'advanced-1',consonants:['ส','ว','ย'],vowels:[],rules:['open-syllable','implicit-o'],explanation:'สวย = beautiful.'},
+  {id:'suay',thai:'สวย',romanizations:['suay','suai'],meaning:'beautiful',emoji:'✨',level:'advanced',lessonId:'advanced-2',consonants:['ส','ว','ย'],vowels:['-วย'],rules:['w-vowel-ua'],explanation:'ส + วย = suay. ว is the ua vowel here (not “w”), and ย is the final — not implicit o.'},
   {id:'sii_zee',thai:'ซี',romanizations:['sii'],meaning:'C (letter) / series clip',emoji:'©️',level:'advanced',lessonId:'advanced-1',consonants:['ซ'],vowels:['ี'],rules:['open-syllable'],explanation:'ซี — long ii with ซ.'},
   {id:'thung',thai:'ถุง',romanizations:['thung'],meaning:'bag',emoji:'🛍️',level:'advanced',lessonId:'advanced-1',consonants:['ถ','ง'],vowels:['ุ'],rules:['final-consonant'],explanation:'ถุง = bag.'},
   {id:'phii',thai:'ผี',romanizations:['phii'],meaning:'ghost',emoji:'👻',level:'advanced',lessonId:'advanced-1',consonants:['ผ'],vowels:['ี'],rules:['open-syllable'],explanation:'ผี = ghost.'},
@@ -369,12 +371,13 @@ const LESSONS = [
     ],
     examples:['khaa2','sii','fuu','faa','saa','muu'],practiceWordIds:['khaa2','sii','fuu','faa','saa','thaa2','muu','nuu','maa_dog']},
   {id:'advanced-2',level:'advanced',order:24,title:'Common real-world words',unlockAfter:'advanced-1',isBoss:false,
-    introduces:{consonants:[],vowels:['ำ','้'],rules:['tone-mark','special-vowel','multi-syllable']},
+    introduces:{consonants:[],vowels:['ำ','้','-วย'],rules:['tone-mark','special-vowel','multi-syllable','w-vowel-ua']},
     teachingCards:[
       {title:'Real words with tone marks',body:'Tone mark ้ affects tone. ำ is a special vowel form. Full tone rules come later — for now, identify the mark and continue decoding.'},
+      {title:'Critical: ว can be a vowel (uay)',body:'In สวย, ว is not consonant “w”. The pattern -วย makes the uay sound: ส + วย = suay (beautiful). Do not read it as s + o + w + y or as implicit o.'},
       {title:'Longer words = syllable chains',body:'From advanced onward you will read words with 3+ consonants. Decode one syllable at a time: สวัสดี, ขอบคุณ, อาหาร. Do not try to swallow the whole word at once.'},
     ],
-    examples:['khao','khaao','raan','sawasdee','khopkhun'],practiceWordIds:['khao','khaao','raan','baan','naam','sawasdee','khopkhun','ahaan','klaang','jing']},
+    examples:['khao','khaao','raan','suay','sawasdee','khopkhun'],practiceWordIds:['khao','khaao','raan','baan','naam','suay','sawasdee','khopkhun','ahaan','klaang','jing']},
   {id:'advanced-3',level:'advanced',order:25,title:'Tone marks overview',unlockAfter:'advanced-2',isBoss:false,
     introduces:{consonants:[],vowels:['่','๊','๋'],rules:['tone-mark']},
     teachingCards:[{title:'Four tone marks',body:'่ mai ek, ้ mai tho, ๊ mai tri, ๋ mai chattawa. Tone marks affect tone but do not replace vowels. Exact tone depends on consonant class — learned next.'}],
