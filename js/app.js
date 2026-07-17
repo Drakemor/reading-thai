@@ -928,6 +928,16 @@ function goLesson(id) {
 }
 
 function getKbButtons() {
+  // Result / death screens use the sticky action bar as the keyboard target list.
+  if (currentScreen === 'test' && testSession && (testSession.finished || testSession.dying || testSession.awaitingResults)) {
+    const actions = [...document.querySelectorAll('.slide-actions .slide-action:not([disabled])')];
+    if (actions.length) {
+      return actions.filter(el => {
+        const style = window.getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      });
+    }
+  }
   return [...document.querySelectorAll('.kb-btn')].filter(el => {
     const details = el.closest('details');
     if (details && !details.open) return false;
@@ -1034,6 +1044,56 @@ function lessonPrevSlide() {
     ChipAudio.uiSlide();
     animCtx.slideDir = -1; lessonSlideIdx--; render();
   }
+}
+
+function exitLesson() {
+  goScreen('lessons');
+}
+
+function exitTest() {
+  testSession = null;
+  goScreen('lessons');
+}
+
+function flipLessonCard() {
+  if (!lessonSlides || !lessonSlides.length) return;
+  const slide = lessonSlides[lessonSlideIdx];
+  if ((slide.type !== 'practice' && slide.type !== 'example') || lessonReveal[slide.wordId]) return;
+  ChipAudio.uiReveal();
+  animCtx.cardFlip = true;
+  lessonReveal[slide.wordId] = true;
+  render();
+}
+
+function submitTypedAnswer() {
+  const inp = document.getElementById('answer-input');
+  if (!inp) return;
+  submitAnswer(inp.value);
+}
+
+/**
+ * Sticky bottom action bar — always visible for touch / mobile when keyboard is not available.
+ * @param {{exit?:{id?:string,label?:string,onclick:string}, back?:{id?:string,label?:string,onclick:string,disabled?:boolean}, primary?:{id?:string,label:string,onclick:string}, secondary?:{id?:string,label:string,onclick:string}}} opts
+ */
+function renderSlideActions(opts = {}) {
+  const exit = opts.exit || null;
+  const back = opts.back || null;
+  const primary = opts.primary || null;
+  const secondary = opts.secondary || null;
+  const bits = [];
+  if (exit) {
+    bits.push(`<button type="button" id="${escHtml(exit.id || 'nav-exit-btn')}" class="slide-action slide-action-ghost" onclick="${exit.onclick}">${escHtml(exit.label || 'Exit')}</button>`);
+  }
+  if (back) {
+    bits.push(`<button type="button" id="${escHtml(back.id || 'nav-back-btn')}" class="slide-action slide-action-ghost" onclick="${back.onclick}"${back.disabled ? ' disabled aria-disabled="true"' : ''}>${escHtml(back.label || 'Back')}</button>`);
+  }
+  if (secondary) {
+    bits.push(`<button type="button" id="${escHtml(secondary.id || 'nav-secondary-btn')}" class="slide-action slide-action-secondary" onclick="${secondary.onclick}">${escHtml(secondary.label)}</button>`);
+  }
+  if (primary) {
+    bits.push(`<button type="button" id="${escHtml(primary.id || 'nav-primary-btn')}" class="slide-action slide-action-primary" onclick="${primary.onclick}">${escHtml(primary.label)}</button>`);
+  }
+  return `<nav class="slide-actions" aria-label="Screen controls">${bits.join('')}</nav>`;
 }
 
 function startTest(lessonId, isBoss) {
@@ -1276,7 +1336,7 @@ function renderSurvivalResults() {
   const best = state.survivalBest || 0;
   const isPB = pts >= best && pts > 0;
   const rows = (state.survivalScores || []).slice(0, SURVIVAL_TOP_N);
-  return `<div class="shell-frame anim-screen anim-results anim-results-fail">
+  return `<div class="shell-frame screen-with-actions anim-screen anim-results anim-results-fail">
     <header class="shell-chrome shell-chrome-compact"><span class="stat-inline">Survival</span></header>
     <div class="test-stage-block shell-stage text-center space-y-4">
       <h1 class="anim-result-item text-3xl font-bold m-0" style="animation-delay:80ms">Survival over</h1>
@@ -1289,10 +1349,13 @@ function renderSurvivalResults() {
           `<div class="text-sm flex justify-between gap-3"><span class="text-slate-500">${i + 1}.</span><span class="text-slate-400">${formatSurvivalDate(r.date)}</span><strong class="text-amber-300">${r.score}</strong></div>`
         ).join('') : '<p class="text-sm text-slate-500">No scores yet</p>'}
       </div>
-      <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:360ms" data-kb-index="0" onclick="startSurvival()">Play again (Enter)</button>
-      <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:420ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
-      <p class="anim-result-item hint-footer" style="animation-delay:460ms">↑ ↓ navigate · Enter select</p>
     </div>
+    <p class="hint-footer">Play again · Dashboard · Exit</p>
+    ${renderSlideActions({
+      exit: { id: 'test-exit-btn', label: 'Exit', onclick: "testSession=null;goScreen('dashboard')" },
+      secondary: { id: 'test-dashboard-btn', label: 'Dashboard', onclick: "testSession=null;goScreen('dashboard')" },
+      primary: { id: 'primary-action', label: 'Play again', onclick: 'startSurvival()' },
+    })}
   </div>`;
 }
 
@@ -1850,7 +1913,7 @@ function focusPrimaryUI() {
   requestAnimationFrame(() => {
     if (currentScreen === 'test') { focusTestUI(); return; }
     if (currentScreen === 'lesson') {
-      document.getElementById('slide-primary-btn')?.focus();
+      document.getElementById('lesson-primary-btn')?.focus();
       return;
     }
     focusKbButton(navBtnIdx);
@@ -1858,11 +1921,11 @@ function focusPrimaryUI() {
 }
 
 function getTestHint(q) {
-  if (q.type === 'type_roman' || q.type === 'build_syllable') return 'Type your answer, then press Enter';
+  if (q.type === 'type_roman' || q.type === 'build_syllable') return 'Type your answer, then Submit (or Enter) · Exit anytime';
   const n = q.options ? q.options.length : 0;
-  if (n <= 1) return 'Press Enter to select';
-  if (n === 4) return '↑ ↓ ← → move · Enter select · 1–4 quick pick';
-  return '↑ ↓ move · Enter to select · 1–' + Math.min(n, 9) + ' quick pick';
+  if (n <= 1) return 'Tap an answer or press Enter · Exit anytime';
+  if (n === 4) return 'Tap an answer · ↑ ↓ ← → · Enter · Exit';
+  return 'Tap an answer · ↑ ↓ · Enter · 1–' + Math.min(n, 9) + ' · Exit';
 }
 
 function getTestOptions() {
@@ -2205,25 +2268,41 @@ function renderLessonView() {
     body = `<div class="slide-body"><div class="panel text-center space-y-6 anim-card">
       <h2 class="text-3xl font-bold m-0">Ready for the test?</h2>
       <p class="text-slate-400">${testPreviewLine(lesson)}</p>
-      <button type="button" id="slide-primary-btn" class="kb-btn kb-selected w-full py-5 bg-amber-400 text-slate-950 rounded-2xl font-bold text-xl" onclick="startTestFromLesson()">Start Test (Enter)</button>
     </div></div>`;
   }
 
-  const hint = slide.type === 'test' ? 'Enter start test · ← back'
-    : (slide.type === 'practice' || slide.type === 'example') && !lessonReveal[slide.wordId]
-      ? 'Enter flip for sound + meaning · → next · ← back · Esc lessons'
-      : '→ or Enter next · ← back · Esc lessons';
+  const needsFlip = (slide.type === 'practice' || slide.type === 'example') && !lessonReveal[slide.wordId];
+  const hint = slide.type === 'test' ? 'Start Test · Back · Exit'
+    : needsFlip
+      ? 'Flip for sound + meaning · Back · Exit'
+      : 'Next · Back · Exit';
+
+  let primary;
+  if (slide.type === 'test') {
+    primary = { id: 'lesson-primary-btn', label: 'Start Test', onclick: 'startTestFromLesson()' };
+  } else if (needsFlip) {
+    primary = { id: 'lesson-primary-btn', label: 'Flip', onclick: 'flipLessonCard()' };
+  } else {
+    primary = { id: 'lesson-primary-btn', label: 'Next', onclick: 'lessonNextSlide()' };
+  }
+
+  const actions = renderSlideActions({
+    exit: { id: 'lesson-exit-btn', label: 'Exit', onclick: 'exitLesson()' },
+    back: { id: 'lesson-prev-btn', label: 'Back', onclick: 'lessonPrevSlide()', disabled: lessonSlideIdx <= 0 },
+    primary,
+  });
 
   const slideAnim = animCtx.slideDir > 0 ? 'anim-slide-forward' : animCtx.slideDir < 0 ? 'anim-slide-back' : 'anim-slide-fade';
-  return `<div class="shell-frame lesson-rail anim-screen ${slideAnim}">
+  return `<div class="shell-frame lesson-rail screen-with-actions anim-screen ${slideAnim}">
     <header class="shell-chrome shell-chrome-compact">
-      <button type="button" class="kb-btn text-slate-300 px-2 py-1 rounded-lg" onclick="goScreen('lessons')">← Lessons</button>
+      <button type="button" class="kb-btn text-slate-300 px-2 py-1 rounded-lg" onclick="exitLesson()">← Lessons</button>
       ${renderProgressHeader(lesson, { compact: true })}
       <span class="stat-inline">Slide ${lessonSlideIdx + 1}/${total}</span>
     </header>
     <div class="h-1.5 bg-slate-800 rounded-full anim-progress"><div class="h-1.5 bg-amber-400 rounded-full" style="width:${(lessonSlideIdx + 1) / total * 100}%"></div></div>
     <div class="${stageClass}">${body}</div>
     <p class="hint-footer">${hint}</p>
+    ${actions}
   </div>`;
 }
 
@@ -2238,19 +2317,28 @@ function renderTest() {
   if (testSession.dying) {
     const survivalDying = !!testSession.isSurvival;
     navBtnIdx = 0;
-    return `<div class="shell-frame death-screen anim-screen" aria-live="assertive">
+    return `<div class="shell-frame death-screen screen-with-actions anim-screen" aria-live="assertive">
       <header class="shell-chrome shell-chrome-compact">${chromeLesson}${heartsHtml}</header>
       <div class="death-burst" aria-hidden="true"></div>
-      <h1 class="death-title">Out of hearts!</h1>
-      ${renderLastFeedback()}
-      <p class="death-sub">${survivalDying
-        ? 'Three strikes — run over.'
-        : `Too many misses to hit ${testSession.isBoss ? '85' : '80'}%.`}</p>
-      <p class="death-score">${survivalDying
-        ? `Score ${testSession.survivalPoints || 0} · ${testSession.score} correct`
-        : `${testSession.score}/${testSession.questions.length} before the wipe`}</p>
-      <button type="button" id="primary-action" class="kb-btn kb-selected w-full max-w-md py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold mt-2" data-kb-index="0" onclick="continueAfterDeath()">${survivalDying ? 'See results (Enter)' : 'Try again (Enter)'}</button>
-      <p class="hint-footer">Press Enter to continue</p>
+      <div class="test-stage-block shell-stage text-center">
+        <h1 class="death-title">Out of hearts!</h1>
+        ${renderLastFeedback()}
+        <p class="death-sub">${survivalDying
+          ? 'Three strikes — run over.'
+          : `Too many misses to hit ${testSession.isBoss ? '85' : '80'}%.`}</p>
+        <p class="death-score">${survivalDying
+          ? `Score ${testSession.survivalPoints || 0} · ${testSession.score} correct`
+          : `${testSession.score}/${testSession.questions.length} before the wipe`}</p>
+      </div>
+      <p class="hint-footer">Continue · Exit</p>
+      ${renderSlideActions({
+        exit: { id: 'test-exit-btn', label: 'Exit', onclick: 'exitTest()' },
+        primary: {
+          id: 'primary-action',
+          label: survivalDying ? 'See results' : 'Try again',
+          onclick: 'continueAfterDeath()',
+        },
+      })}
     </div>`;
   }
 
@@ -2258,7 +2346,7 @@ function renderTest() {
     navBtnIdx = 0;
     const total = testSession.questions.length;
     const ok = !!testSession.lastFeedback?.correct;
-    return `<div class="shell-frame anim-screen" aria-live="polite">
+    return `<div class="shell-frame screen-with-actions anim-screen" aria-live="polite">
       <header class="shell-chrome shell-chrome-compact test-chrome-bar">
         ${chromeLesson}
         ${heartsHtml}
@@ -2268,9 +2356,12 @@ function renderTest() {
         ${renderLastFeedback()}
         <p class="text-slate-400">${ok ? 'Nice — last one done.' : 'Last one noted — review it, then see your score.'}</p>
         <p class="text-slate-500 text-sm">Score so far: ${testSession.score}/${total}</p>
-        <button type="button" id="primary-action" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="continueToResults()">See results (Enter)</button>
-        <p class="hint-footer">Press Enter to continue</p>
       </div>
+      <p class="hint-footer">See results · Exit</p>
+      ${renderSlideActions({
+        exit: { id: 'test-exit-btn', label: 'Exit', onclick: 'exitTest()' },
+        primary: { id: 'primary-action', label: 'See results', onclick: 'continueToResults()' },
+      })}
     </div>`;
   }
 
@@ -2281,7 +2372,7 @@ function renderTest() {
     const next = LESSONS.find(l => l.unlockAfter === testSession.lessonId);
     const nextLabel = testSession.passed && next ? `Next: ${formatMixedThai(next.title)}` : null;
     const resultAnim = testSession.passed ? 'anim-results-pass' : 'anim-results-fail';
-    return `<div class="shell-frame anim-screen anim-results ${resultAnim}">
+    return `<div class="shell-frame screen-with-actions anim-screen anim-results ${resultAnim}">
       <header class="shell-chrome shell-chrome-compact test-chrome-bar">
         ${chromeLesson}
         ${heartsHtml}
@@ -2294,10 +2385,17 @@ function renderTest() {
         <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
         ${renderTestSummary()}
         ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
-        <button type="button" id="primary-action" class="anim-result-item kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" style="animation-delay:420ms" data-kb-index="0" onclick="continueAfterTest()">${testSession.passed ? 'Next Lesson (Enter)' : 'Practice Again (Enter)'}</button>
-        <button type="button" class="anim-result-item kb-btn w-full py-3 bg-slate-800 rounded-2xl" style="animation-delay:480ms" data-kb-index="1" onclick="testSession=null;goScreen('dashboard')">Dashboard</button>
-        <p class="anim-result-item hint-footer" style="animation-delay:520ms">Press Enter to continue · ↑ ↓ navigate</p>
       </div>
+      <p class="hint-footer">Continue · Dashboard · Exit</p>
+      ${renderSlideActions({
+        exit: { id: 'test-exit-btn', label: 'Exit', onclick: "testSession=null;goScreen('dashboard')" },
+        secondary: { id: 'test-dashboard-btn', label: 'Dashboard', onclick: "testSession=null;goScreen('dashboard')" },
+        primary: {
+          id: 'primary-action',
+          label: testSession.passed ? 'Next Lesson' : 'Practice Again',
+          onclick: 'continueAfterTest()',
+        },
+      })}
     </div>`;
   }
   const q = testSession.questions[testSession.current];
@@ -2329,7 +2427,15 @@ function renderTest() {
       <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
   }
 
-  return `<div class="shell-frame" id="test-question">
+  const typed = q.type === 'type_roman' || q.type === 'build_syllable';
+  const actions = renderSlideActions({
+    exit: { id: 'test-exit-btn', label: 'Exit', onclick: 'exitTest()' },
+    primary: typed
+      ? { id: 'answer-submit-btn', label: 'Submit', onclick: 'submitTypedAnswer()' }
+      : null,
+  });
+
+  return `<div class="shell-frame screen-with-actions" id="test-question">
     <header class="shell-chrome shell-chrome-compact test-chrome-bar">
       ${chromeLesson}
       <span class="stat-inline whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `${cur + 1}/${total}`}</span>
@@ -2343,8 +2449,9 @@ function renderTest() {
     <div class="test-stage-block shell-stage">
       ${renderLastFeedback()}
       <div class="anim-test-content">${content}</div>
-      <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
     </div>
+    <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
+    ${actions}
   </div>`;
 }
 
@@ -2416,6 +2523,11 @@ function handleLessonKey(e) {
 
 function handleTestKey(e) {
   if (!testSession) return;
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    exitTest();
+    return;
+  }
   if (testSession.dying) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -2432,8 +2544,8 @@ function handleTestKey(e) {
   }
   if (testSession.finished) {
     const btns = getKbButtons();
-    if (e.key === 'ArrowDown') { e.preventDefault(); focusKbButton(navBtnIdx + 1); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); focusKbButton(navBtnIdx - 1); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); focusKbButton(navBtnIdx + 1); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); focusKbButton(navBtnIdx - 1); }
     else if (e.key === 'Enter') { e.preventDefault(); btns[navBtnIdx]?.click(); }
     return;
   }
