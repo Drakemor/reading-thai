@@ -243,7 +243,9 @@ body, .app-body{
   justify-content:center;
   gap:1rem;
   flex:1;
-  min-height:min(62vh, 34rem);
+  min-height:0;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .test-chrome-bar{
   display:flex;
@@ -267,7 +269,10 @@ body, .app-body{
   justify-content:center;
   width:min(100%, var(--stage-max));
   margin-inline:auto;
-  overflow:visible;
+  min-height:0;
+  overflow-x:visible;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
 }
 .lesson-stage-wide{width:min(100%, 56rem)}
 .lesson-stage-contrast{width:min(100%, 48rem)}
@@ -316,6 +321,69 @@ body, .app-body{
   text-align:center;
   color:#64748b;
   font-size:0.75rem;
+  flex-shrink:0;
+}
+.screen-with-actions{
+  max-height:calc(100dvh - 2 * var(--shell-pad));
+  overflow:hidden;
+}
+.slide-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:stretch;
+  gap:0.5rem;
+  flex-shrink:0;
+  position:sticky;
+  bottom:0;
+  z-index:30;
+  margin-top:auto;
+  padding:0.55rem 0 calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  background:linear-gradient(to top, rgba(2,6,23,.98) 55%, rgba(2,6,23,.82) 78%, rgba(2,6,23,0));
+}
+.slide-action{
+  appearance:none;
+  border:2px solid transparent;
+  border-radius:1rem;
+  font-weight:600;
+  font-size:0.95rem;
+  line-height:1.2;
+  padding:0.85rem 1rem;
+  min-height:2.85rem;
+  cursor:pointer;
+  transition:transform 0.12s var(--ease-snappy), background .15s, border-color .15s, box-shadow .15s;
+}
+.slide-action:active{transform:scale(0.975)}
+.slide-action:focus-visible{
+  border-color:#fbbf24;
+  box-shadow:0 0 0 2px rgba(251,191,36,.25);
+  outline:none;
+}
+.slide-action:disabled,
+.slide-action[aria-disabled="true"]{
+  opacity:0.4;
+  cursor:not-allowed;
+  transform:none;
+}
+.slide-action-ghost{
+  background:rgba(30,41,59,.95);
+  color:#e2e8f0;
+  border-color:rgba(71,85,105,.7);
+}
+.slide-action-secondary{
+  background:rgba(30,41,59,.95);
+  color:#f8fafc;
+  border-color:rgba(71,85,105,.7);
+  flex:1 1 7rem;
+}
+.slide-action-primary{
+  background:#fbbf24;
+  color:#020617;
+  flex:1 1 9rem;
+  font-weight:700;
+}
+@media (max-width:420px){
+  .slide-actions{gap:0.4rem}
+  .slide-action{padding:0.8rem 0.75rem;font-size:0.9rem}
 }
 .symbol-duo{
   display:grid;

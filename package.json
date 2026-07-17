@@ -6,7 +6,9 @@
   "scripts": {
     "start": "npx --yes serve -l 4173 .",
     "screenshots": "node scripts/capture-screenshots.mjs",
-    "smoke": "node scripts/smoke-survival.mjs"
+    "smoke": "node scripts/smoke-survival.mjs && node scripts/smoke-viewport-actions.mjs",
+    "smoke:logic": "node scripts/smoke-survival.mjs",
+    "smoke:viewport": "node scripts/smoke-viewport-actions.mjs"
   },
   "devDependencies": {
     "playwright": "^1.54.0",
