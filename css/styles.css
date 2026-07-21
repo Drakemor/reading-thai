@@ -61,8 +61,10 @@ body.typing-focus{
   overflow:hidden;
 }
 body.keyboard-open .app-test-active,
-body.typing-focus .app-test-active{
+body.typing-focus .app-test-active,
+body.has-typed-dock .app-test-active{
   max-height:var(--vvh, 100dvh);
+  min-height:0;
   overflow:hidden;
 }
 .shell-frame{
@@ -338,8 +340,19 @@ body.typing-focus .app-test-active{
     padding:0.35rem var(--shell-pad);
     padding-bottom:max(0.35rem, env(safe-area-inset-bottom, 0px));
     gap:0.35rem;
-    min-height:var(--vvh, 100dvh);
+    min-height:0;
     max-height:var(--vvh, 100dvh);
+  }
+  body.keyboard-open .test-compact-bar .hearts-bar,
+  body.typing-focus .test-compact-bar .hearts-bar{
+    display:none;
+  }
+  body.keyboard-open .fb-strip-detail,
+  body.typing-focus .fb-strip-detail{
+    display:-webkit-box;
+    -webkit-line-clamp:2;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
   }
 }
 .test-compact-bar{
