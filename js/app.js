@@ -1925,6 +1925,11 @@ function render() {
   animCtx.cardFlip = false;
   attachKeyboard();
   focusPrimaryUI();
+  applyViewportKeyboard();
+  requestAnimationFrame(() => {
+    applyViewportKeyboard();
+    setTimeout(applyViewportKeyboard, 150);
+  });
   if (shouldFlip) {
     const card = document.getElementById('lesson-flip-card');
     if (card) {
@@ -2024,36 +2029,65 @@ function focusTestUI() {
 
 function scrollAnswerInputIntoView(input) {
   if (!input) return;
+  applyViewportKeyboard();
   requestAnimationFrame(() => {
-    input.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-    if (window.visualViewport) {
-      const vv = window.visualViewport;
-      const rect = input.getBoundingClientRect();
-      const gap = 12;
-      const overlap = rect.bottom + gap - vv.height;
-      if (overlap > 0) window.scrollBy({ top: overlap, behavior: 'smooth' });
+    applyViewportKeyboard();
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const rect = input.getBoundingClientRect();
+    const visibleBottom = vv.offsetTop + vv.height;
+    const gap = 10;
+    if (rect.bottom > visibleBottom - gap) {
+      window.scrollBy({ top: rect.bottom - visibleBottom + gap, behavior: 'smooth' });
     }
   });
 }
 
+function applyViewportKeyboard() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  const vv = window.visualViewport;
+  const root = document.documentElement;
+  if (!vv) {
+    document.body.classList.remove('keyboard-open');
+    return;
+  }
+  const vvh = Math.round(vv.height);
+  const vvTop = Math.round(vv.offsetTop);
+  const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  root.style.setProperty('--vvh', `${vvh}px`);
+  root.style.setProperty('--vv-top', `${vvTop}px`);
+  root.style.setProperty('--keyboard-inset', `${inset}px`);
+  const kbOpen = inset > 60 || vvh < window.innerHeight * 0.72;
+  document.body.classList.toggle('keyboard-open', kbOpen);
+  const dock = document.querySelector('.test-type-dock');
+  if (dock) {
+    root.style.setProperty('--test-dock-height', `${dock.offsetHeight}px`);
+  }
+}
+
 function initViewportKeyboard() {
   if (typeof window === 'undefined' || typeof document === 'undefined' || typeof window.addEventListener !== 'function') return;
-  const apply = () => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const kbOpen = vv.height < window.innerHeight * 0.78;
-    document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
-    document.body.classList.toggle('keyboard-open', kbOpen);
+  const scheduleApply = () => {
+    applyViewportKeyboard();
+    requestAnimationFrame(applyViewportKeyboard);
+    setTimeout(applyViewportKeyboard, 120);
+    setTimeout(applyViewportKeyboard, 320);
   };
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', apply);
-    window.visualViewport.addEventListener('scroll', apply);
+    window.visualViewport.addEventListener('resize', scheduleApply);
+    window.visualViewport.addEventListener('scroll', scheduleApply);
   }
-  window.addEventListener('resize', apply);
-  apply();
+  window.addEventListener('resize', scheduleApply);
   document.addEventListener('focusin', e => {
-    if (e.target?.id === 'answer-input') scrollAnswerInputIntoView(e.target);
+    if (e.target?.id === 'answer-input') {
+      scheduleApply();
+      scrollAnswerInputIntoView(e.target);
+    }
   });
+  document.addEventListener('focusout', e => {
+    if (e.target?.id === 'answer-input') setTimeout(applyViewportKeyboard, 120);
+  });
+  scheduleApply();
 }
 
 function renderCloudSyncSection() {
@@ -2514,11 +2548,13 @@ function renderTest() {
     <div class="test-body test-stage-block shell-stage">
       <div class="anim-test-content">${content}</div>
     </div>
-    ${needsInput ? `<div class="test-input-bar">
-      ${renderAnswerInput()}
-      <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
-    </div>` : `<p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>`}
-    ${actions}
+    ${needsInput ? `<div class="test-type-dock">
+      <div class="test-input-bar">
+        ${renderAnswerInput()}
+        <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
+      </div>
+      ${actions}
+    </div>` : `<p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>${actions}`}
   </div>`;
 }
 
