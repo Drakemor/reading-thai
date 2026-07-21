@@ -216,6 +216,21 @@ function isCompactTestLayout() {
   return window.matchMedia('(max-width: 640px)').matches;
 }
 
+function isMobileDevice() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(max-width: 640px), (pointer: coarse)').matches;
+}
+
+function isStandaloneOrFullscreen() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: fullscreen)').matches
+  );
+}
+
 function tryEnterFullscreen() {
   if (typeof document === 'undefined') return;
   const el = document.documentElement;
@@ -223,6 +238,113 @@ function tryEnterFullscreen() {
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
   if (req) {
     try { Promise.resolve(req.call(el)).catch(() => {}); } catch (e) { /* ignore */ }
+  }
+}
+
+function initAppFullscreen() {
+  if (typeof document === 'undefined' || !isMobileDevice()) return;
+  const go = () => tryEnterFullscreen();
+  document.addEventListener('pointerdown', go, { passive: true });
+  document.addEventListener('touchend', go, { passive: true });
+}
+
+function renderFullscreenBanner() {
+  if (!isMobileDevice() || isStandaloneOrFullscreen()) return '';
+  return `<button type="button" class="fullscreen-banner kb-btn w-full text-left" onclick="tryEnterFullscreen()">
+    <span class="fullscreen-banner-title">Tap for fullscreen</span>
+    <span class="fullscreen-banner-sub">Hides the browser bar and keeps the keyboard from covering the input.</span>
+  </button>`;
+}
+
+function needsTypedInputDock() {
+  if (currentScreen !== 'test' || !testSession || testSession.finished || testSession.dying) return false;
+  const q = testSession.questions[testSession.current];
+  if (!q) return false;
+  return isCompactTestLayout() && (q.type === 'type_roman' || q.type === 'build_syllable');
+}
+
+let dockTrackTimer = null;
+
+function stopDockTracking() {
+  if (dockTrackTimer) {
+    clearInterval(dockTrackTimer);
+    dockTrackTimer = null;
+  }
+}
+
+function startDockTracking() {
+  stopDockTracking();
+  positionTypedInputDock();
+  dockTrackTimer = setInterval(() => {
+    positionTypedInputDock();
+    const focused = document.activeElement?.id === 'answer-input';
+    const typing = focused || document.body.classList.contains('typing-focus');
+    if (!typing) stopDockTracking();
+  }, 50);
+}
+
+function clearTypedInputDock() {
+  const dock = document.getElementById('typed-input-dock');
+  const app = document.getElementById('app');
+  if (dock) {
+    dock.innerHTML = '';
+    dock.classList.remove('is-active');
+    dock.style.bottom = '';
+    dock.setAttribute('aria-hidden', 'true');
+  }
+  if (app) app.style.paddingBottom = '';
+  document.body.classList.remove('has-typed-dock');
+  stopDockTracking();
+}
+
+function syncTypedInputDock() {
+  if (!needsTypedInputDock()) {
+    clearTypedInputDock();
+    return;
+  }
+  const dock = document.getElementById('typed-input-dock');
+  if (!dock) return;
+  dock.innerHTML = `<div class="test-compact-input-row">${renderAnswerInput().replace(/\bw-full\b/, 'flex-1 min-w-0')}<button type="button" id="answer-submit-btn" class="test-compact-submit" onclick="submitTypedAnswer()">Go</button></div>`;
+  dock.classList.add('is-active');
+  dock.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('has-typed-dock');
+  positionTypedInputDock();
+}
+
+function positionTypedInputDock() {
+  const dock = document.getElementById('typed-input-dock');
+  if (!dock?.classList.contains('is-active')) return;
+  const vv = window.visualViewport;
+  const root = document.documentElement;
+  const innerH = window.innerHeight;
+  const focused = document.activeElement?.id === 'answer-input';
+  const typing = focused || document.body.classList.contains('typing-focus');
+
+  let bottomInset = 0;
+  let visibleH = innerH;
+  if (vv) {
+    bottomInset = Math.max(0, Math.round(innerH - vv.offsetTop - vv.height));
+    visibleH = Math.round(vv.height);
+  }
+  if (typing && bottomInset < 120) {
+    bottomInset = Math.round(innerH * 0.52);
+    visibleH = innerH - bottomInset;
+  }
+
+  dock.style.bottom = `${bottomInset}px`;
+  root.style.setProperty('--vvh', `${visibleH}px`);
+  root.style.setProperty('--keyboard-inset', `${bottomInset}px`);
+  root.style.setProperty('--typed-dock-height', `${dock.offsetHeight}px`);
+
+  const kbOpen = bottomInset > 60 || visibleH < innerH * 0.78;
+  document.body.classList.toggle('keyboard-open', kbOpen);
+  document.body.classList.toggle('typing-focus', typing);
+
+  const app = document.getElementById('app');
+  if (app) {
+    app.style.paddingBottom = typing
+      ? `${dock.offsetHeight + bottomInset + 8}px`
+      : `${dock.offsetHeight + 8}px`;
   }
 }
 
@@ -1153,7 +1275,6 @@ function startTest(lessonId, isBoss) {
   };
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
-  tryEnterFullscreen();
   render();
 }
 
@@ -1313,7 +1434,6 @@ function startSurvival() {
   };
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
-  tryEnterFullscreen();
   render();
 }
 
@@ -1806,10 +1926,6 @@ function renderTypedTestCompact({ cur, total, heartsHtml, scoreAnim, thaiHtml })
     </div>
     ${renderLastFeedbackCompact()}
     <div class="test-compact-main anim-test-content">${thaiHtml}</div>
-    <div class="test-compact-input-row">
-      ${renderAnswerInput().replace(/\bw-full\b/, 'flex-1 min-w-0')}
-      <button type="button" id="answer-submit-btn" class="test-compact-submit" onclick="submitTypedAnswer()">Go</button>
-    </div>
   </div>`;
 }
 
@@ -1931,7 +2047,6 @@ function startReview() {
   animCtx.slideDir = 0;
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
-  tryEnterFullscreen();
   render();
 }
 
@@ -1984,17 +2099,19 @@ function render() {
     case 'test': html = renderTest(); break;
     case 'review': html = renderReview(); break;
   }
-  app.innerHTML = html;
+  const mobileFs = renderFullscreenBanner();
+  app.innerHTML = mobileFs ? `${mobileFs}${html}` : html;
+  syncTypedInputDock();
   const shouldFlip = animCtx.cardFlip;
   animCtx.slideDir = 0;
   animCtx.cardFlip = false;
   attachKeyboard();
   focusPrimaryUI();
-  applyViewportKeyboard();
+  positionTypedInputDock();
   requestAnimationFrame(() => {
-    applyViewportKeyboard();
-    pinTypedInputToViewport();
-    setTimeout(() => { applyViewportKeyboard(); pinTypedInputToViewport(); }, 150);
+    positionTypedInputDock();
+    setTimeout(positionTypedInputDock, 150);
+    setTimeout(positionTypedInputDock, 400);
   });
   if (shouldFlip) {
     const card = document.getElementById('lesson-flip-card');
@@ -2086,111 +2203,50 @@ function focusTestUI() {
     const inp = document.getElementById('answer-input');
     if (inp) {
       inp.focus({ preventScroll: true });
-      scrollAnswerInputIntoView(inp);
+      startDockTracking();
       return;
     }
     highlightOption(selectedOptionIdx || 0);
   });
 }
 
-function scrollAnswerInputIntoView(input) {
-  if (!input) return;
-  pinTypedInputToViewport();
-  applyViewportKeyboard();
-}
-
-function unpinTypedInputToViewport() {
-  const row = document.querySelector('.test-compact-input-row');
-  if (!row?.classList.contains('is-pinned')) return;
-  row.classList.remove('is-pinned');
-  row.style.cssText = '';
-  const shell = document.querySelector('.test-compact');
-  if (shell) shell.style.paddingBottom = '';
-}
-
-function pinTypedInputToViewport() {
-  const row = document.querySelector('.test-compact-input-row');
-  if (!row) return;
-  const vv = window.visualViewport;
-  if (!vv) return;
-  const focused = document.activeElement?.id === 'answer-input';
-  const kbOpen = vv.height < window.innerHeight * 0.82;
-  if (!focused && !kbOpen) {
-    unpinTypedInputToViewport();
-    return;
-  }
-
-  row.classList.add('is-pinned');
-  const h = row.offsetHeight || 52;
-  let visibleBottom = vv.offsetTop + vv.height;
-  if (focused && vv.height >= window.innerHeight * 0.78) {
-    visibleBottom = Math.min(visibleBottom, window.innerHeight * 0.46);
-  }
-  const top = Math.max(vv.offsetTop, visibleBottom - h);
-  const shellPad = getComputedStyle(document.documentElement).getPropertyValue('--shell-pad').trim() || '0.85rem';
-
-  row.style.position = 'fixed';
-  row.style.left = shellPad;
-  row.style.right = shellPad;
-  row.style.width = 'auto';
-  row.style.top = `${top}px`;
-  row.style.zIndex = '200';
-  row.style.background = '#020617';
-  row.style.paddingBottom = 'max(0.25rem, env(safe-area-inset-bottom, 0px))';
-
-  const shell = document.querySelector('.test-compact');
-  if (shell) shell.style.paddingBottom = `${h + 10}px`;
-}
-
 function applyViewportKeyboard() {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  const vv = window.visualViewport;
-  const root = document.documentElement;
-  if (!vv) {
-    document.body.classList.remove('keyboard-open');
-    unpinTypedInputToViewport();
-    return;
-  }
-  const vvh = Math.round(vv.height);
-  const vvTop = Math.round(vv.offsetTop);
-  const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-  root.style.setProperty('--vvh', `${vvh}px`);
-  root.style.setProperty('--vv-top', `${vvTop}px`);
-  root.style.setProperty('--keyboard-inset', `${inset}px`);
-  const kbOpen = inset > 40 || vvh < window.innerHeight * 0.75;
-  document.body.classList.toggle('keyboard-open', kbOpen);
-  pinTypedInputToViewport();
+  positionTypedInputDock();
 }
 
 function initViewportKeyboard() {
   if (typeof window === 'undefined' || typeof document === 'undefined' || typeof window.addEventListener !== 'function') return;
   const scheduleApply = () => {
-    applyViewportKeyboard();
-    requestAnimationFrame(applyViewportKeyboard);
-    setTimeout(applyViewportKeyboard, 120);
-    setTimeout(applyViewportKeyboard, 320);
+    positionTypedInputDock();
+    requestAnimationFrame(positionTypedInputDock);
+    setTimeout(positionTypedInputDock, 120);
+    setTimeout(positionTypedInputDock, 320);
+    setTimeout(positionTypedInputDock, 600);
   };
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', scheduleApply);
     window.visualViewport.addEventListener('scroll', scheduleApply);
   }
   window.addEventListener('resize', scheduleApply);
+  const onAnswerInputEngage = () => {
+    document.body.classList.add('typing-focus');
+    positionTypedInputDock();
+    startDockTracking();
+  };
+  document.addEventListener('pointerdown', e => {
+    if (e.target?.id === 'answer-input' || e.target?.closest?.('#typed-input-dock')) onAnswerInputEngage();
+  }, { passive: true, capture: true });
   document.addEventListener('focusin', e => {
-    if (e.target?.id === 'answer-input') {
-      document.body.classList.add('typing-focus');
-      scheduleApply();
-      pinTypedInputToViewport();
-    }
+    if (e.target?.id === 'answer-input') onAnswerInputEngage();
   });
   document.addEventListener('focusout', e => {
     if (e.target?.id === 'answer-input') {
       setTimeout(() => {
         if (document.activeElement?.id !== 'answer-input') {
           document.body.classList.remove('typing-focus');
-          unpinTypedInputToViewport();
         }
-        applyViewportKeyboard();
-      }, 120);
+        positionTypedInputDock();
+      }, 150);
     }
   });
   scheduleApply();
@@ -2969,6 +3025,7 @@ function applyDemoFromQuery() {
 
 applyDemoFromQuery();
 initViewportKeyboard();
+initAppFullscreen();
 attachKeyboard();
 
 async function bootstrap() {
