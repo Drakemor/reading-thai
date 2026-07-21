@@ -1993,7 +1993,8 @@ function render() {
   applyViewportKeyboard();
   requestAnimationFrame(() => {
     applyViewportKeyboard();
-    setTimeout(applyViewportKeyboard, 150);
+    pinTypedInputToViewport();
+    setTimeout(() => { applyViewportKeyboard(); pinTypedInputToViewport(); }, 150);
   });
   if (shouldFlip) {
     const card = document.getElementById('lesson-flip-card');
@@ -2094,18 +2095,51 @@ function focusTestUI() {
 
 function scrollAnswerInputIntoView(input) {
   if (!input) return;
+  pinTypedInputToViewport();
   applyViewportKeyboard();
-  requestAnimationFrame(() => {
-    applyViewportKeyboard();
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const rect = input.getBoundingClientRect();
-    const visibleBottom = vv.offsetTop + vv.height;
-    const gap = 10;
-    if (rect.bottom > visibleBottom - gap) {
-      window.scrollBy({ top: rect.bottom - visibleBottom + gap, behavior: 'smooth' });
-    }
-  });
+}
+
+function unpinTypedInputToViewport() {
+  const row = document.querySelector('.test-compact-input-row');
+  if (!row?.classList.contains('is-pinned')) return;
+  row.classList.remove('is-pinned');
+  row.style.cssText = '';
+  const shell = document.querySelector('.test-compact');
+  if (shell) shell.style.paddingBottom = '';
+}
+
+function pinTypedInputToViewport() {
+  const row = document.querySelector('.test-compact-input-row');
+  if (!row) return;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const focused = document.activeElement?.id === 'answer-input';
+  const kbOpen = vv.height < window.innerHeight * 0.82;
+  if (!focused && !kbOpen) {
+    unpinTypedInputToViewport();
+    return;
+  }
+
+  row.classList.add('is-pinned');
+  const h = row.offsetHeight || 52;
+  let visibleBottom = vv.offsetTop + vv.height;
+  if (focused && vv.height >= window.innerHeight * 0.78) {
+    visibleBottom = Math.min(visibleBottom, window.innerHeight * 0.46);
+  }
+  const top = Math.max(vv.offsetTop, visibleBottom - h);
+  const shellPad = getComputedStyle(document.documentElement).getPropertyValue('--shell-pad').trim() || '0.85rem';
+
+  row.style.position = 'fixed';
+  row.style.left = shellPad;
+  row.style.right = shellPad;
+  row.style.width = 'auto';
+  row.style.top = `${top}px`;
+  row.style.zIndex = '200';
+  row.style.background = '#020617';
+  row.style.paddingBottom = 'max(0.25rem, env(safe-area-inset-bottom, 0px))';
+
+  const shell = document.querySelector('.test-compact');
+  if (shell) shell.style.paddingBottom = `${h + 10}px`;
 }
 
 function applyViewportKeyboard() {
@@ -2114,6 +2148,7 @@ function applyViewportKeyboard() {
   const root = document.documentElement;
   if (!vv) {
     document.body.classList.remove('keyboard-open');
+    unpinTypedInputToViewport();
     return;
   }
   const vvh = Math.round(vv.height);
@@ -2124,6 +2159,7 @@ function applyViewportKeyboard() {
   root.style.setProperty('--keyboard-inset', `${inset}px`);
   const kbOpen = inset > 40 || vvh < window.innerHeight * 0.75;
   document.body.classList.toggle('keyboard-open', kbOpen);
+  pinTypedInputToViewport();
 }
 
 function initViewportKeyboard() {
@@ -2143,6 +2179,7 @@ function initViewportKeyboard() {
     if (e.target?.id === 'answer-input') {
       document.body.classList.add('typing-focus');
       scheduleApply();
+      pinTypedInputToViewport();
     }
   });
   document.addEventListener('focusout', e => {
@@ -2150,6 +2187,7 @@ function initViewportKeyboard() {
       setTimeout(() => {
         if (document.activeElement?.id !== 'answer-input') {
           document.body.classList.remove('typing-focus');
+          unpinTypedInputToViewport();
         }
         applyViewportKeyboard();
       }, 120);
@@ -2366,7 +2404,7 @@ function renderSymbolCard(sym) {
     <div><span class="text-slate-400">Sound:</span> <strong>${escHtml(s.sound)}</strong></div>
     <div><span class="text-slate-400">Role:</span> <strong>${escHtml(typeLabel)}</strong></div>
     ${s.warning ? `<p class="text-amber-400 text-sm">⚠ ${formatMixedThai(s.warning, 'thai-glyph')}</p>` : ''}
-    ${exWord ? `<div><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'thai-glyph-pair')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p><p class="text-slate-300 mt-1">${exWord.emoji ? `${exWord.emoji} ` : ''}${escHtml(exWord.meaning || '')}</p></div>` : ''}
+    ${exWord ? `<div class="symbol-example"><span class="text-slate-400">Example:</span> ${renderWordAllFonts(exWord.thai, 'thai-glyph-pair')}<p class="mt-2"><strong>${exWord.romanizations.join('/')}</strong></p><p class="text-slate-300 mt-1">${exWord.emoji ? `${exWord.emoji} ` : ''}${escHtml(exWord.meaning || '')}</p></div>` : ''}
   </div>`;
 }
 
