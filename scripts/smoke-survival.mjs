@@ -23,10 +23,12 @@ const sandbox = {
   })(),
   document: {
     getElementById: () => null,
-    body: { classList: { add() {}, remove() {} }, offsetWidth: 0 },
+    addEventListener() {},
+    documentElement: { style: { setProperty() {} } },
+    body: { classList: { add() {}, remove() {}, toggle() {} }, offsetWidth: 0 },
     onkeydown: null,
   },
-  window: {},
+  window: { addEventListener() {}, visualViewport: null },
   alert: () => {},
   ChipAudio: {
     testStart() {}, testCorrect() {}, testWrong() {}, testDeath() {}, testPass() {}, testFail() {},
@@ -42,7 +44,7 @@ sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
 vm.runInContext(
-  dataCode + '\n' + appCode.replace(/\n(?:render|bootstrap)\(\);\s*$/, '\n') + `
+  dataCode + '\n' + appCode.replace(/\napplyDemoFromQuery\(\);[\s\S]*$/, '\n') + `
   globalThis.__TRQ = {
     WORDS, LESSONS, survivalPointsForWord, recordSurvivalScore, defaultState,
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,

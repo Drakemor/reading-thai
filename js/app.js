@@ -193,9 +193,22 @@ function normRoman(s) {
     .toLowerCase()
     .replace(/[^a-z]/g, '');
 }
+function displayRoman(s) {
+  if (s == null) return '';
+  return String(s).trim();
+}
+function expectedRomanDisplay(word) {
+  if (!word?.romanizations?.length) return '';
+  const uniq = [...new Set(word.romanizations.map(displayRoman).filter(Boolean))];
+  return uniq.join(' / ');
+}
 function checkRoman(input, word) {
   const n = normRoman(input);
+  if (!n) return false;
   return word.romanizations.some(r => normRoman(r) === n);
+}
+function renderAnswerInput(placeholder = 'Type pronunciation...') {
+  return `<input id="answer-input" type="text" class="answer-input w-full py-3 sm:py-4 px-4 sm:px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" placeholder="${placeholder}" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" autofocus>`;
 }
 
 function getKnownSymbols() {
@@ -876,9 +889,10 @@ function renderHeartsBar(heartsTotal, mistakes) {
   }).join('');
   const left = Math.max(0, total - lost);
   const danger = allowed > 0 && left === 0;
+  const label = allowed === 0 ? 'Perfect' : danger ? 'Last chance' : `${left}/${total}`;
   return `<div class="hearts-bar${allowed === 0 ? ' hearts-bar-perfect' : ''}${danger ? ' hearts-bar-danger' : ''}" role="img" aria-label="${left} of ${total} hearts remaining">
     ${hearts}
-    <span class="hearts-label">${allowed === 0 ? 'Perfect' : danger ? 'Last chance' : `${left}/${total}`}</span>
+    <span class="hearts-label" data-short="${left}/${total}">${label}</span>
   </div>`;
 }
 
@@ -1701,12 +1715,22 @@ function renderLastFeedback() {
     : 'fb-card fb-card-bad';
   const muted = ans.correct ? 'text-emerald-100' : 'text-rose-100';
   let answerLine = '';
+  const typed = displayRoman(ans.answer);
   if (ans.q.type === 'rule') {
-    if (!ans.correct) answerLine = `<span class="${muted}">Answer:</span> <strong class="text-white">${ans.q.answer}</strong>`;
-  } else if (word?.romanizations?.[0]) {
-    const primary = word.romanizations[0];
-    const alts = word.romanizations.slice(1);
-    answerLine = `<span class="${muted}">${ans.correct ? 'Read as' : 'Answer'}:</span> <strong class="text-white">${primary}</strong>${alts.length ? ` <span class="${muted}">(also ${alts.join('/')})</span>` : ''}`;
+    if (ans.correct) {
+      answerLine = `<span class="${muted}">Answer:</span> <strong class="text-white">“${escHtml(displayRoman(ans.q.answer))}”</strong>`;
+    } else {
+      answerLine = `<p class="fb-answer"><span class="${muted}">You typed</span> <strong class="text-white">“${escHtml(typed || '—')}”</strong></p>
+        <p class="fb-answer"><span class="${muted}">Expected</span> <strong class="text-white">“${escHtml(displayRoman(ans.q.answer))}”</strong></p>`;
+    }
+  } else if (word?.romanizations?.length) {
+    const expected = expectedRomanDisplay(word);
+    if (ans.correct) {
+      answerLine = `<span class="${muted}">Read as</span> <strong class="text-white">“${escHtml(expected)}”</strong>`;
+    } else {
+      answerLine = `<p class="fb-answer"><span class="${muted}">You typed</span> <strong class="text-white">“${escHtml(typed || '—')}”</strong></p>
+        <p class="fb-answer"><span class="${muted}">Expected</span> <strong class="text-white">“${escHtml(expected)}”</strong></p>`;
+    }
   }
   const thai = word?.thai
     ? `<span class="${getFontClass(ans.font)} fb-thai thai-glyph anim-thai" lang="th">${escHtml(displayThaiText(word.thai))}</span>`
@@ -1718,7 +1742,7 @@ function renderLastFeedback() {
     ${emoji ? `<div class="fb-emoji" aria-hidden="true">${emoji}</div>` : ''}
     <div class="fb-body">
       <p class="fb-label">${label}${thai ? ` · ${thai}` : ''}</p>
-      ${answerLine ? `<p class="fb-answer">${answerLine}</p>` : ''}
+      ${answerLine ? (answerLine.includes('<p class="fb-answer">') ? answerLine : `<p class="fb-answer">${answerLine}</p>`) : ''}
       ${typeof ans.speedBonus === 'number' ? `<p class="text-xs text-amber-300">${ans.speedBonus>0?`+${ans.speedBonus} speed bonus`:''}${ans.durationMs!=null?`${ans.speedBonus>0?' · ':''}${(ans.durationMs/1000).toFixed(1)}s` : ''}</p>` : ''}
       ${meaning ? `<p class="fb-meaning">${meaning}</p>` : ''}
     </div>
@@ -1735,10 +1759,11 @@ function renderTestSummary() {
       const thai = w?.thai
         ? `<span class="${getFontClass(ans.font)} thai-glyph" lang="th">${escHtml(displayThaiText(w.thai))}</span>`
         : formatMixedThai(ans.q.prompt, 'thai-glyph');
-      const correct = ans.q.type === 'rule' ? ans.q.answer : (w?.romanizations?.join('/') || '—');
+      const expected = ans.q.type === 'rule' ? displayRoman(ans.q.answer) : expectedRomanDisplay(w);
+      const typed = displayRoman(ans.answer);
       const emoji = displayEmoji(w);
       const meaning = displayMeaning(w);
-      return `<div class="anim-missed-row text-sm flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-rose-400">✗</span>${emoji ? `<span>${emoji}</span>` : ''}${thai}<span class="text-slate-500">→</span><strong>${correct}</strong>${meaning ? `<span class="text-slate-400">· ${meaning}</span>` : ''}</div>`;
+      return `<div class="anim-missed-row text-sm flex flex-wrap items-center gap-x-2 gap-y-1"><span class="text-rose-400">✗</span>${emoji ? `<span>${emoji}</span>` : ''}${thai}<span class="text-slate-500">“${escHtml(typed || '—')}” → “${escHtml(expected || '—')}”</span>${meaning ? `<span class="text-slate-400">· ${meaning}</span>` : ''}</div>`;
     }).join('')}
   </div>`;
 }
@@ -1848,7 +1873,7 @@ function startReview() {
 function setAudioVolume(v) {
   ChipAudio.setVolume(Number(v) / 100);
   const label = document.getElementById('vol-label');
-  if (label) label.textContent = ChipAudio.isMuted() ? 'Muted' : Math.round(ChipAudio.getVolume() * 100) + '%';
+  if (label) label.textContent = ChipAudio.isMuted() ? 'Muted' : Math.round(Number(v)) + '%';
   const muteBtn = document.getElementById('mute-btn');
   if (muteBtn) muteBtn.textContent = ChipAudio.isMuted() ? 'Unmute' : 'Mute';
   ChipAudio.uiSelect();
@@ -1885,6 +1910,7 @@ function render() {
   updateStreak();
   const app = document.getElementById('app');
   if (!app) return;
+  app.classList.toggle('app-test-active', currentScreen === 'test' && !!testSession && !testSession.finished && !testSession.dying);
   let html = '';
   switch(currentScreen) {
     case 'dashboard': html = renderDashboard(); break;
@@ -1987,8 +2013,46 @@ function focusTestUI() {
     if (testSession.awaitingResults) { focusKbButton(navBtnIdx || 0); return; }
     if (testSession.finished) { focusKbButton(navBtnIdx); return; }
     const inp = document.getElementById('answer-input');
-    if (inp) { inp.focus(); inp.select?.(); return; }
+    if (inp) {
+      inp.focus({ preventScroll: true });
+      scrollAnswerInputIntoView(inp);
+      return;
+    }
     highlightOption(selectedOptionIdx || 0);
+  });
+}
+
+function scrollAnswerInputIntoView(input) {
+  if (!input) return;
+  requestAnimationFrame(() => {
+    input.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    if (window.visualViewport) {
+      const vv = window.visualViewport;
+      const rect = input.getBoundingClientRect();
+      const gap = 12;
+      const overlap = rect.bottom + gap - vv.height;
+      if (overlap > 0) window.scrollBy({ top: overlap, behavior: 'smooth' });
+    }
+  });
+}
+
+function initViewportKeyboard() {
+  if (typeof window === 'undefined' || typeof document === 'undefined' || typeof window.addEventListener !== 'function') return;
+  const apply = () => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const kbOpen = vv.height < window.innerHeight * 0.78;
+    document.documentElement.style.setProperty('--vvh', `${Math.round(vv.height)}px`);
+    document.body.classList.toggle('keyboard-open', kbOpen);
+  };
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', apply);
+    window.visualViewport.addEventListener('scroll', apply);
+  }
+  window.addEventListener('resize', apply);
+  apply();
+  document.addEventListener('focusin', e => {
+    if (e.target?.id === 'answer-input') scrollAnswerInputIntoView(e.target);
   });
 }
 
@@ -2108,7 +2172,7 @@ function renderDashboard() {
           <div class="panel-body space-y-3">
             <div class="flex justify-between items-center">
               <span class="text-sm text-slate-400">Chip beeps</span>
-              <span id="vol-label" class="text-sm text-slate-300">${ChipAudio.isMuted() ? 'Muted' : Math.round(ChipAudio.getVolume() * 100) + '%'}</span>
+              <span id="vol-label" class="text-sm text-slate-300 vol-label-fixed">${ChipAudio.isMuted() ? 'Muted' : Math.round(ChipAudio.getVolume() * 100) + '%'}</span>
             </div>
             <div class="flex items-center gap-3">
               <input id="vol-slider" type="range" min="0" max="100" value="${Math.round(ChipAudio.getVolume() * 100)}"
@@ -2415,42 +2479,45 @@ function renderTest() {
       ${renderOptionButtons(q.options)}`;
   } else if (q.type === 'build_syllable') {
     content = `${thaiHero(q.word.thai)}
-      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">Read this. Type the pronunciation:</p>
-      <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
+      <p class="text-slate-400 mb-4 anim-reveal test-prompt whitespace-nowrap" style="animation-delay:70ms">Read this. Type the pronunciation:</p>`;
   } else if (q.type === 'choose_pron') {
     content = `${thaiHero(q.word.thai)}
-      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
+      <p class="text-slate-400 mb-4 anim-reveal test-prompt whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
       ${renderOptionButtons(q.options)}`;
   } else {
     content = `${thaiHero(q.word.thai)}
-      <p class="text-slate-400 mb-4 anim-reveal whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>
-      <input id="answer-input" type="text" class="w-full py-4 px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" style="animation-delay:100ms" placeholder="Type pronunciation..." autocomplete="off" autofocus>`;
+      <p class="text-slate-400 mb-4 anim-reveal test-prompt whitespace-nowrap" style="animation-delay:70ms">${q.prompt}</p>`;
   }
 
-  const typed = q.type === 'type_roman' || q.type === 'build_syllable';
+  const needsInput = q.type === 'type_roman' || q.type === 'build_syllable';
   const actions = renderSlideActions({
     exit: { id: 'test-exit-btn', label: 'Exit', onclick: 'exitTest()' },
-    primary: typed
+    primary: needsInput
       ? { id: 'answer-submit-btn', label: 'Submit', onclick: 'submitTypedAnswer()' }
       : null,
   });
 
-  return `<div class="shell-frame screen-with-actions" id="test-question">
-    <header class="shell-chrome shell-chrome-compact test-chrome-bar">
-      ${chromeLesson}
-      <span class="stat-inline whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `${cur + 1}/${total}`}</span>
-      ${heartsHtml}
-      <span class="stat-inline ${scoreAnim}">${testSession.isSurvival
-        ? `Pts ${testSession.survivalPoints || 0}`
-        : `Score ${testSession.score}`}</span>
-      <span class="stat-inline" aria-live="off"><span id="q-timer">0.0</span>s</span>
-    </header>
-    <div class="h-1.5 bg-slate-800 rounded-full anim-progress"><div class="h-1.5 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
-    <div class="test-stage-block shell-stage">
+  return `<div class="shell-frame screen-with-actions test-shell${needsInput ? ' test-shell-type' : ''}" id="test-question">
+    <div class="test-top">
+      <header class="shell-chrome shell-chrome-compact test-chrome-bar test-meta">
+        <div class="test-progress-head">${chromeLesson}</div>
+        <span class="stat-inline test-stat whitespace-nowrap">${testSession.isSurvival ? `Q ${cur + 1}` : `${cur + 1}/${total}`}</span>
+        ${heartsHtml}
+        <span class="stat-inline test-stat ${scoreAnim}">${testSession.isSurvival
+          ? `Pts ${testSession.survivalPoints || 0}`
+          : `Score ${testSession.score}`}</span>
+        <span class="stat-inline test-stat" aria-live="off"><span id="q-timer">0.0</span>s</span>
+      </header>
+      <div class="h-1.5 bg-slate-800 rounded-full anim-progress"><div class="h-1.5 bg-amber-400 rounded-full" style="width:${cur/total*100}%"></div></div>
       ${renderLastFeedback()}
+    </div>
+    <div class="test-body test-stage-block shell-stage">
       <div class="anim-test-content">${content}</div>
     </div>
-    <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
+    ${needsInput ? `<div class="test-input-bar">
+      ${renderAnswerInput()}
+      <p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>
+    </div>` : `<p class="hint-footer anim-reveal" style="animation-delay:180ms">${getTestHint(q)}</p>`}
     ${actions}
   </div>`;
 }
@@ -2750,6 +2817,7 @@ function applyDemoFromQuery() {
 }
 
 applyDemoFromQuery();
+initViewportKeyboard();
 attachKeyboard();
 
 async function bootstrap() {
