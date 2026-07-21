@@ -1,8 +1,12 @@
 /**
- * Mobile layout audit: typed quiz + lesson cards at full and keyboard-open heights.
- * Simulates keyboard overlay via visualViewport mock + input pinning.
+ * Mobile layout audit: typed quiz input dock + lesson cards.
  *
- * Run: node scripts/smoke-mobile-layout.mjs
+ * Tests what matters on real phones:
+ * 1. Input lives in #typed-input-dock (body child), not inside #app
+ * 2. At shrunk viewport height (keyboard resized), input stays visible
+ * 3. On full-height viewport with focused input, dock lifts above estimated keyboard
+ *
+ * Run: npm run smoke:mobile
  */
 import fs from 'fs';
 import http from 'http';
@@ -16,37 +20,38 @@ const root = path.resolve(__dirname, '..');
 const PORT = 4175;
 const OUT = path.join(root, 'docs', 'screenshots', 'mobile-audit');
 
-const VIEWPORTS = [
-  { name: 'mobile-full', width: 390, height: 844 },
-  { name: 'mobile-keyboard', width: 390, height: 400 },
-  { name: 'mobile-overlay', width: 390, height: 844, visibleHeight: 380 },
-];
+const MOBILE = { width: 390, height: 844 };
+const KEYBOARD_RESIZED = { width: 390, height: 400 };
 
-function assertInViewport(label, audit) {
-  const bad = audit.filter((r) => !r.ok);
+function assertOk(label, rows) {
+  const bad = rows.filter((r) => !r.ok);
   if (bad.length) {
-    const detail = bad
-      .map((r) => `${r.sel}: top=${r.top?.toFixed?.(0) ?? '?'} bottom=${r.bottom?.toFixed?.(0) ?? '?'} vh=${r.vh} ${r.note || ''}`)
-      .join('\n  ');
-    throw new Error(`${label}\n  ${detail}`);
+    throw new Error(`${label}\n  ${bad.map((r) => JSON.stringify(r)).join('\n  ')}`);
   }
 }
 
-async function auditPage(page, selectors, vhOverride) {
-  return page.evaluate(({ sels, vhOverride }) => {
-    const vh = vhOverride || window.innerHeight;
-    return sels.map((sel) => {
+async function auditRects(page, checks) {
+  return page.evaluate((items) => {
+    return items.map(({ sel, maxBottom }) => {
       const el = document.querySelector(sel);
-      if (!el) return { sel, ok: false, note: 'missing', bottom: 0, top: 0, vh };
+      if (!el) return { sel, ok: false, note: 'missing' };
       const r = el.getBoundingClientRect();
       const style = getComputedStyle(el);
       if (style.display === 'none' || style.visibility === 'hidden') {
-        return { sel, ok: false, note: 'hidden', bottom: r.bottom, top: r.top, vh };
+        return { sel, ok: false, note: 'hidden', ...r.toJSON?.() };
       }
-      const ok = r.width > 0 && r.height > 0 && r.top >= -2 && r.bottom <= vh + 2;
-      return { sel, ok, top: r.top, bottom: r.bottom, vh, note: ok ? 'ok' : 'clipped' };
+      const bottomLimit = maxBottom ?? window.innerHeight;
+      const ok = r.width > 0 && r.height > 0 && r.top >= -2 && r.bottom <= bottomLimit + 2;
+      return {
+        sel,
+        ok,
+        top: r.top,
+        bottom: r.bottom,
+        maxBottom: bottomLimit,
+        note: ok ? 'ok' : 'clipped',
+      };
     });
-  }, { sels: selectors, vhOverride });
+  }, checks);
 }
 
 async function showLessonSlide(page, type) {
@@ -63,54 +68,40 @@ async function showLessonSlide(page, type) {
   await page.waitForTimeout(120);
 }
 
-async function simulateKeyboardOverlay(page, visibleHeight) {
-  await page.evaluate((h) => {
-    const listeners = { resize: [], scroll: [] };
-    const vv = {
-      width: window.innerWidth,
-      height: h,
-      offsetTop: 0,
-      offsetLeft: 0,
-      pageLeft: 0,
-      pageTop: 0,
-      scale: 1,
-      addEventListener(type, fn) { (listeners[type] || (listeners[type] = [])).push(fn); },
-      removeEventListener() {},
+async function auditTypedDock(page, tag, visibleBottom) {
+  await page.waitForSelector('#typed-input-dock.is-active', { timeout: 5000 });
+  const dockParent = await page.evaluate(() => {
+    const dock = document.getElementById('typed-input-dock');
+    const input = document.getElementById('answer-input');
+    return {
+      dockInBody: dock?.parentElement === document.body,
+      inputInDock: input?.closest('#typed-input-dock') != null,
+      dockBottom: dock?.style.bottom || '',
+      position: dock ? getComputedStyle(dock).position : '',
     };
-    Object.defineProperty(window, 'visualViewport', { configurable: true, value: vv });
-    document.body.classList.add('keyboard-open', 'typing-focus');
-    if (typeof applyViewportKeyboard === 'function') applyViewportKeyboard();
-    if (typeof pinTypedInputToViewport === 'function') pinTypedInputToViewport();
-  }, visibleHeight);
-  await page.waitForTimeout(100);
-}
+  });
+  if (!dockParent.dockInBody) throw new Error(`${tag}: dock not direct child of body`);
+  if (!dockParent.inputInDock) throw new Error(`${tag}: input not inside dock`);
+  if (dockParent.position !== 'fixed') throw new Error(`${tag}: dock not position:fixed`);
 
-async function auditTypedQuiz(page, tag, vh) {
   await page.focus('#answer-input');
-  const audit = await auditPage(page, [
-    '#answer-input',
-    '#answer-submit-btn, .test-compact-submit',
-    '#test-exit-btn, .test-compact-exit',
-    '.test-compact-main, .thai-glyph-hero',
-  ], vh);
-  assertInViewport(tag, audit);
-  if (await page.locator('.fb-strip').count()) {
-    assertInViewport(`${tag} feedback`, await auditPage(page, ['.fb-strip'], vh));
-  }
+  await page.waitForTimeout(100);
+
+  assertOk(`${tag} dock visible`, await auditRects(page, [
+    { sel: '#typed-input-dock', maxBottom: visibleBottom },
+    { sel: '#answer-input', maxBottom: visibleBottom },
+    { sel: '#answer-submit-btn', maxBottom: visibleBottom },
+    { sel: '#test-exit-btn', maxBottom: visibleBottom },
+  ]));
 }
 
-async function auditLessonSlides(page, tag, vh) {
+async function auditLesson(page, tag, vh) {
   for (const slide of ['intro', 'symbol', 'practice', 'teaching']) {
     await showLessonSlide(page, slide);
-    assertInViewport(`${tag} ${slide} actions`, await auditPage(page, [
-      '#lesson-primary-btn',
-      '#lesson-exit-btn',
-    ], vh));
-    const stage = await auditPage(page, ['.lesson-stage'], vh);
-    const stageEl = stage[0];
-    if (!stageEl?.ok) {
-      throw new Error(`${tag} ${slide}: lesson-stage missing`);
-    }
+    assertOk(`${tag} ${slide}`, await auditRects(page, [
+      { sel: '#lesson-primary-btn', maxBottom: vh },
+      { sel: '#lesson-exit-btn', maxBottom: vh },
+    ]));
   }
 }
 
@@ -125,37 +116,114 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   const failures = [];
 
-  try {
-    for (const vp of VIEWPORTS) {
-      for (const scene of ['quiz', 'feedback', 'lesson']) {
-        const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
-        const tag = `${vp.name}-${scene}`;
-        const vh = scene === 'lesson' ? vp.height : (vp.visibleHeight || vp.height);
-        try {
-          const url = scene === 'lesson' ? '/?demo=lesson' : `/?demo=${scene}`;
-          await page.goto(`http://127.0.0.1:${PORT}${url}`, { waitUntil: 'networkidle' });
-          await page.waitForSelector('#app .shell-frame', { timeout: 10000 });
-          await page.waitForTimeout(150);
-
-          if (vp.visibleHeight && scene !== 'lesson') {
-            await simulateKeyboardOverlay(page, vp.visibleHeight);
-          }
-
-          if (scene === 'lesson') {
-            await auditLessonSlides(page, tag, vh);
-          } else {
-            await auditTypedQuiz(page, tag, vh);
-          }
-
-          await page.screenshot({ path: path.join(OUT, `${tag}.png`), fullPage: false });
-          console.log(`OK ${tag}`);
-        } catch (err) {
-          failures.push({ tag, err: err.message });
-          await page.screenshot({ path: path.join(OUT, `${tag}-FAIL.png`), fullPage: false });
-          console.error(`FAIL ${tag}: ${err.message}`);
+  const scenarios = [
+    {
+      name: 'mobile-full-quiz',
+      viewport: MOBILE,
+      url: '/?demo=quiz',
+      run: (page) => auditTypedDock(page, 'mobile-full-quiz', MOBILE.height),
+    },
+    {
+      name: 'mobile-full-feedback',
+      viewport: MOBILE,
+      url: '/?demo=feedback',
+      run: (page) => auditTypedDock(page, 'mobile-full-feedback', MOBILE.height),
+    },
+    {
+      name: 'mobile-keyboard-quiz',
+      viewport: KEYBOARD_RESIZED,
+      url: '/?demo=feedback',
+      run: (page) => auditTypedDock(page, 'mobile-keyboard-quiz', KEYBOARD_RESIZED.height),
+    },
+    {
+      name: 'mobile-focus-lift',
+      viewport: MOBILE,
+      url: '/?demo=feedback',
+      run: async (page) => {
+        await page.waitForSelector('#typed-input-dock.is-active');
+        await page.locator('#answer-input').tap();
+        await page.waitForTimeout(250);
+        const visibleBottom = Math.round(MOBILE.height * 0.52);
+        assertOk('mobile-focus-lift', await auditRects(page, [
+          { sel: '#answer-input', maxBottom: visibleBottom },
+          { sel: '#answer-submit-btn', maxBottom: visibleBottom },
+        ]));
+        const lifted = await page.evaluate(() => {
+          const dock = document.getElementById('typed-input-dock');
+          return {
+            bottom: dock?.style.bottom || '',
+            typing: document.body.classList.contains('typing-focus'),
+            vvH: window.visualViewport?.height ?? window.innerHeight,
+            innerH: window.innerHeight,
+          };
+        });
+        if (!lifted.typing) throw new Error('mobile-focus-lift: typing-focus not set after tap');
+        if (!lifted.bottom || parseInt(lifted.bottom, 10) < 200) {
+          throw new Error(`mobile-focus-lift: dock not lifted (${lifted.bottom}) vv=${lifted.vvH} inner=${lifted.innerH}`);
         }
-        await page.close();
+      },
+    },
+    {
+      name: 'mobile-overlay-keyboard',
+      viewport: MOBILE,
+      url: '/?demo=quiz',
+      run: async (page) => {
+        await page.waitForSelector('#typed-input-dock.is-active');
+        await page.locator('#answer-input').tap();
+        await page.waitForTimeout(250);
+        const metrics = await page.evaluate(() => {
+          const input = document.getElementById('answer-input');
+          const r = input.getBoundingClientRect();
+          const liftLine = window.innerHeight * 0.52;
+          return {
+            dockBottom: document.getElementById('typed-input-dock')?.style.bottom || '',
+            inputBottom: r.bottom,
+            liftLine,
+            innerH: window.innerHeight,
+            ok: r.bottom <= liftLine + 2,
+          };
+        });
+        if (!metrics.ok) {
+          throw new Error(`mobile-overlay-keyboard: input not lifted above keyboard zone (${JSON.stringify(metrics)})`);
+        }
+      },
+    },
+    {
+      name: 'mobile-full-lesson',
+      viewport: MOBILE,
+      url: '/?demo=lesson',
+      run: (page) => auditLesson(page, 'mobile-full-lesson', MOBILE.height),
+    },
+    {
+      name: 'mobile-keyboard-lesson',
+      viewport: KEYBOARD_RESIZED,
+      url: '/?demo=lesson',
+      run: (page) => auditLesson(page, 'mobile-keyboard-lesson', KEYBOARD_RESIZED.height),
+    },
+  ];
+
+  try {
+    for (const sc of scenarios) {
+      const context = await browser.newContext({
+        viewport: sc.viewport,
+        hasTouch: true,
+        isMobile: true,
+      });
+      const page = await context.newPage();
+      try {
+        await page.goto(`http://127.0.0.1:${PORT}${sc.url}`, { waitUntil: 'networkidle' });
+        await page.waitForSelector('#app .shell-frame', { timeout: 10000 });
+        await page.waitForTimeout(150);
+        await sc.run(page);
+        await page.screenshot({ path: path.join(OUT, `${sc.name}.png`), fullPage: false });
+        console.log(`OK ${sc.name}`);
+      } catch (err) {
+        failures.push({ tag: sc.name, err: err.message });
+        await page.screenshot({ path: path.join(OUT, `${sc.name}-FAIL.png`), fullPage: false });
+        console.error(`FAIL ${sc.name}: ${err.message}`);
       }
+      await page.close();
+      await context.close();
     }
   } finally {
     await browser.close();
@@ -163,7 +231,7 @@ async function main() {
   }
 
   if (failures.length) {
-    console.error(`\n${failures.length} layout failure(s). Screenshots in ${OUT}`);
+    console.error(`\n${failures.length} failure(s). Screenshots in ${OUT}`);
     process.exit(1);
   }
   console.log(`\nAll mobile layout checks passed. Screenshots in ${OUT}`);

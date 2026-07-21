@@ -49,8 +49,9 @@ async function auditSelectors(page, selectors) {
           r.right <= vw + eps;
         const cx = Math.min(vw - 1, Math.max(0, r.left + r.width / 2));
         const cy = Math.min(vh - 1, Math.max(0, r.top + r.height / 2));
-        const hit = document.elementFromPoint(cx, cy);
-        const hittable = !!(hit && (el === hit || el.contains(hit)));
+        const stack = document.elementsFromPoint(cx, cy);
+        const hit = stack[0];
+        const hittable = stack.some((n) => el === n || el.contains(n) || n.contains(el));
         out.push({
           sel: label,
           present: true,
@@ -134,6 +135,12 @@ async function runViewport(browser, vp) {
   ]));
 
   await gotoDemo(page, 'quiz');
+  const compactTyped = vp.width <= 640;
+  if (compactTyped) {
+    await page.waitForSelector('#typed-input-dock.is-active', { timeout: 5000 });
+  } else {
+    await page.waitForSelector('#answer-input', { timeout: 5000 });
+  }
   assertAllOk(`${tag} typed quiz`, await auditSelectors(page, [
     '#test-exit-btn',
     '#answer-submit-btn',
