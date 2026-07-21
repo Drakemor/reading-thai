@@ -56,32 +56,14 @@ body, .app-body{
   gap:0.85rem;
   box-sizing:border-box;
 }
-body.keyboard-open{
-  --app-pad-bottom:0px;
+body.keyboard-open,
+body.typing-focus{
   overflow:hidden;
-  height:var(--vvh);
-  touch-action:none;
 }
-body.keyboard-open .app-test-active{
-  min-height:var(--vvh);
-  max-height:var(--vvh);
+body.keyboard-open .app-test-active,
+body.typing-focus .app-test-active{
+  max-height:var(--vvh, 100dvh);
   overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  padding-top:0.35rem;
-  padding-bottom:0;
-  gap:0.35rem;
-}
-body.keyboard-open .app-test-active .screen-with-actions.test-shell-type{
-  max-height:var(--vvh);
-  min-height:0;
-  flex:1;
-}
-body.keyboard-open .test-shell-type{
-  flex:1;
-  min-height:0;
-  max-height:var(--vvh);
-  gap:0.35rem;
 }
 .shell-frame{
   display:flex;
@@ -321,7 +303,6 @@ body.keyboard-open .test-shell-type{
 }
 .test-input-bar{
   flex:0 0 auto;
-  z-index:20;
   padding-top:0.35rem;
 }
 .test-type-dock{
@@ -341,63 +322,158 @@ body.keyboard-open .test-shell-type{
   line-height:1.35;
   touch-action:manipulation;
 }
-body.keyboard-open .test-progress-head{display:none}
-body.keyboard-open .test-shell-type .test-top{
-  max-height:min(28vh, calc(var(--vvh) * 0.32));
-  flex-shrink:1;
+
+/* Mobile typed-answer layout — no lesson header, compact feedback, inline Go */
+.test-compact{
+  display:flex;
+  flex-direction:column;
+  gap:0.45rem;
+  flex:1;
+  min-height:0;
+  max-height:var(--vvh, 100dvh);
+  overflow:hidden;
 }
-body.keyboard-open .test-shell-type .test-chrome-bar{
-  padding:0.3rem 0.55rem;
+@media (max-width:640px){
+  .app-test-active.app-shell{
+    padding:0.35rem var(--shell-pad);
+    padding-bottom:max(0.35rem, env(safe-area-inset-bottom, 0px));
+    gap:0.35rem;
+    min-height:var(--vvh, 100dvh);
+    max-height:var(--vvh, 100dvh);
+  }
+}
+.test-compact-bar{
+  display:flex;
+  align-items:center;
+  gap:0.35rem 0.5rem;
+  flex-wrap:nowrap;
+  flex-shrink:0;
+  padding:0.35rem 0.55rem;
+  border:1px solid var(--line);
+  border-radius:0.75rem;
+  background:var(--chrome-bg);
   font-size:0.78rem;
+  color:var(--muted);
 }
-body.keyboard-open .test-shell-type .test-top .anim-progress{display:none}
-body.keyboard-open .test-shell-type .test-top .fb-card{
-  padding:0.45rem 0.6rem;
-  gap:0.25rem;
-  margin:0;
+.test-compact-stat{
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+  flex:0 0 auto;
 }
-body.keyboard-open .test-shell-type .test-top .fb-emoji{display:none}
-body.keyboard-open .test-shell-type .test-top .fb-meaning{display:none}
-body.keyboard-open .test-body .thai-glyph-hero{
-  font-size:clamp(2rem, 8vw, 2.75rem)!important;
-  margin-bottom:0.35rem!important;
-  padding:0.05em 0.2em;
+.test-compact-bar .hearts-bar{
+  flex:0 1 auto;
+  min-width:0;
+  padding:0.15rem 0.35rem;
 }
-body.keyboard-open .test-prompt{
-  font-size:0.8rem;
-  margin-bottom:0.35rem!important;
+.test-compact-bar .hearts-label{display:none}
+.test-compact-exit{
+  margin-left:auto;
+  appearance:none;
+  border:1px solid rgba(71,85,105,.7);
+  border-radius:0.55rem;
+  background:rgba(30,41,59,.95);
+  color:#cbd5e1;
+  font-size:0.75rem;
+  font-weight:600;
+  padding:0.35rem 0.55rem;
+  flex:0 0 auto;
+  cursor:pointer;
 }
-body.keyboard-open .test-body{
-  justify-content:flex-start;
-  padding-top:0;
+.test-compact-main{
   flex:1 1 auto;
   min-height:0;
-  max-height:calc(var(--vvh) - var(--test-dock-height, 10rem) - 4.5rem);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
+  padding:0.15rem 0;
 }
-body.keyboard-open .test-type-dock{
-  position:fixed;
-  left:50%;
-  transform:translate(-50%, -100%);
-  width:min(calc(100% - 2 * var(--shell-pad)), var(--frame-max));
-  box-sizing:border-box;
-  top:calc(var(--vv-top, 0px) + var(--vvh, 100vh));
-  z-index:120;
-  padding-bottom:max(0.35rem, env(safe-area-inset-bottom, 0px));
-  background:linear-gradient(to top, #020617 82%, rgba(2, 6, 23, 0));
+.test-compact-main .thai-glyph-hero{
+  margin-bottom:0!important;
+  font-size:clamp(2.75rem, 14vw, 4rem)!important;
+  line-height:1.2;
 }
-body.keyboard-open .test-type-dock .test-input-bar{
-  padding-top:0.25rem;
+body.typing-focus .test-compact-main .thai-glyph-hero,
+body.keyboard-open .test-compact-main .thai-glyph-hero{
+  font-size:clamp(2.25rem, 11vw, 3rem)!important;
 }
-body.keyboard-open .test-type-dock .hint-footer{display:none}
-body.keyboard-open .test-type-dock .slide-actions{
-  gap:0.35rem;
+.test-compact-input-row{
+  display:flex;
+  align-items:stretch;
+  gap:0.45rem;
+  flex-shrink:0;
 }
-body.keyboard-open .test-type-dock .slide-action{
-  min-height:2.55rem;
-  padding:0.7rem 0.75rem;
+.test-compact-input-row .answer-input{
+  flex:1 1 auto;
+  min-width:0;
+  padding:0.65rem 0.85rem;
+  font-size:1.05rem;
+  border-radius:0.85rem;
 }
+.test-compact-submit{
+  appearance:none;
+  border:none;
+  border-radius:0.85rem;
+  background:#fbbf24;
+  color:#020617;
+  font-weight:700;
+  font-size:0.95rem;
+  padding:0 1rem;
+  min-width:3.25rem;
+  flex:0 0 auto;
+  cursor:pointer;
+}
+.fb-strip{
+  flex-shrink:0;
+  border-radius:0.65rem;
+  padding:0.45rem 0.65rem;
+  font-size:0.78rem;
+  line-height:1.35;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:0.15rem;
+}
+.fb-strip-ok{
+  background:#047857;
+  border:1px solid #059669;
+  color:#ecfdf5;
+}
+.fb-strip-bad{
+  background:#be123c;
+  border:1px solid #e11d48;
+  color:#fff1f2;
+}
+.fb-strip-label{
+  font-weight:700;
+  margin-right:0.35rem;
+}
+.fb-strip-detail strong{color:#fff}
+
+html:fullscreen,
+html:-webkit-full-screen{
+  height:100%;
+  background:#020617;
+}
+html:fullscreen body,
+html:-webkit-full-screen body{
+  min-height:100%;
+}
+html:fullscreen .app-shell,
+html:-webkit-full-screen .app-shell{
+  max-height:100%;
+  min-height:100%;
+  padding-bottom:max(var(--shell-pad), env(safe-area-inset-bottom, 0px));
+}
+@media (display-mode:standalone){
+  .app-shell{
+    padding-top:max(var(--shell-pad), env(safe-area-inset-top, 0px));
+    padding-bottom:max(calc(var(--shell-pad) + 1.25rem), env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .dash-aside{display:flex;flex-direction:column;gap:0.75rem}
 .lesson-rail{
   display:flex;

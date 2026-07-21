@@ -208,7 +208,22 @@ function checkRoman(input, word) {
   return word.romanizations.some(r => normRoman(r) === n);
 }
 function renderAnswerInput(placeholder = 'Type pronunciation...') {
-  return `<input id="answer-input" type="text" class="answer-input w-full py-3 sm:py-4 px-4 sm:px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" placeholder="${placeholder}" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="done" autofocus>`;
+  return `<input id="answer-input" type="text" class="answer-input w-full py-3 sm:py-4 px-4 sm:px-5 bg-slate-800 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-lg anim-reveal" placeholder="${placeholder}" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="latin" enterkeyhint="go" autofocus>`;
+}
+
+function isCompactTestLayout() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false;
+  return window.matchMedia('(max-width: 640px)').matches;
+}
+
+function tryEnterFullscreen() {
+  if (typeof document === 'undefined') return;
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (req) {
+    try { Promise.resolve(req.call(el)).catch(() => {}); } catch (e) { /* ignore */ }
+  }
 }
 
 function getKnownSymbols() {
@@ -1138,6 +1153,7 @@ function startTest(lessonId, isBoss) {
   };
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
+  tryEnterFullscreen();
   render();
 }
 
@@ -1297,6 +1313,7 @@ function startSurvival() {
   };
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
+  tryEnterFullscreen();
   render();
 }
 
@@ -1749,6 +1766,53 @@ function renderLastFeedback() {
   </div>`;
 }
 
+function renderLastFeedbackCompact() {
+  if (!testSession?.lastFeedback) return '';
+  const ans = testSession.lastFeedback;
+  const word = ans.q.word && ans.q.word.id !== 'rule' ? ans.q.word : null;
+  const label = ans.correct ? 'Correct' : 'Incorrect';
+  const strip = ans.correct ? 'fb-strip fb-strip-ok' : 'fb-strip fb-strip-bad';
+  const typed = displayRoman(ans.answer);
+  let detail = '';
+  if (ans.q.type === 'rule') {
+    detail = ans.correct
+      ? `“${escHtml(displayRoman(ans.q.answer))}”`
+      : `You typed <strong>“${escHtml(typed || '—')}”</strong> → Expected <strong>“${escHtml(displayRoman(ans.q.answer))}”</strong>`;
+  } else if (word?.romanizations?.length) {
+    const expected = expectedRomanDisplay(word);
+    detail = ans.correct
+      ? `“${escHtml(expected)}”`
+      : `You typed <strong>“${escHtml(typed || '—')}”</strong> → Expected <strong>“${escHtml(expected)}”</strong>`;
+  }
+  const thai = word?.thai
+    ? ` · <span class="${getFontClass(ans.font)} thai-glyph" lang="th">${escHtml(displayThaiText(word.thai))}</span>`
+    : '';
+  return `<div class="${strip} anim-feedback ${ans.correct ? 'anim-feedback-correct' : 'anim-feedback-wrong'}">
+    <p class="fb-strip-label m-0">${label}${thai}</p>
+    ${detail ? `<p class="fb-strip-detail m-0">${detail}</p>` : ''}
+  </div>`;
+}
+
+function renderTypedTestCompact({ cur, total, heartsHtml, scoreAnim, thaiHtml }) {
+  const scoreLabel = testSession.isSurvival
+    ? `Pts ${testSession.survivalPoints || 0}`
+    : `Score ${testSession.score}`;
+  return `<div class="shell-frame test-compact" id="test-question">
+    <div class="test-compact-bar">
+      <span class="test-compact-stat">${testSession.isSurvival ? `Q ${cur + 1}` : `${cur + 1}/${total}`}</span>
+      ${heartsHtml}
+      <span class="test-compact-stat ${scoreAnim}">${scoreLabel}</span>
+      <button type="button" id="test-exit-btn" class="test-compact-exit" onclick="exitTest()">Exit</button>
+    </div>
+    ${renderLastFeedbackCompact()}
+    <div class="test-compact-main anim-test-content">${thaiHtml}</div>
+    <div class="test-compact-input-row">
+      ${renderAnswerInput().replace(/\bw-full\b/, 'flex-1 min-w-0')}
+      <button type="button" id="answer-submit-btn" class="test-compact-submit" onclick="submitTypedAnswer()">Go</button>
+    </div>
+  </div>`;
+}
+
 function renderTestSummary() {
   const wrong = testSession.answers.filter(a => !a.correct);
   if (!wrong.length) return '';
@@ -1867,6 +1931,7 @@ function startReview() {
   animCtx.slideDir = 0;
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
+  tryEnterFullscreen();
   render();
 }
 
@@ -2057,12 +2122,8 @@ function applyViewportKeyboard() {
   root.style.setProperty('--vvh', `${vvh}px`);
   root.style.setProperty('--vv-top', `${vvTop}px`);
   root.style.setProperty('--keyboard-inset', `${inset}px`);
-  const kbOpen = inset > 60 || vvh < window.innerHeight * 0.72;
+  const kbOpen = inset > 40 || vvh < window.innerHeight * 0.75;
   document.body.classList.toggle('keyboard-open', kbOpen);
-  const dock = document.querySelector('.test-type-dock');
-  if (dock) {
-    root.style.setProperty('--test-dock-height', `${dock.offsetHeight}px`);
-  }
 }
 
 function initViewportKeyboard() {
@@ -2080,12 +2141,19 @@ function initViewportKeyboard() {
   window.addEventListener('resize', scheduleApply);
   document.addEventListener('focusin', e => {
     if (e.target?.id === 'answer-input') {
+      document.body.classList.add('typing-focus');
       scheduleApply();
-      scrollAnswerInputIntoView(e.target);
     }
   });
   document.addEventListener('focusout', e => {
-    if (e.target?.id === 'answer-input') setTimeout(applyViewportKeyboard, 120);
+    if (e.target?.id === 'answer-input') {
+      setTimeout(() => {
+        if (document.activeElement?.id !== 'answer-input') {
+          document.body.classList.remove('typing-focus');
+        }
+        applyViewportKeyboard();
+      }, 120);
+    }
   });
   scheduleApply();
 }
@@ -2157,6 +2225,7 @@ function renderDashboard() {
         <span class="stat-inline">${getCurrentLevel()}</span>
         <span class="stat-inline">${wp}% done</span>
         <span class="stat-inline">🔥 ${state.streak || 0}d</span>
+        <button type="button" class="stat-inline kb-btn" onclick="tryEnterFullscreen()" title="Fullscreen">⛶</button>
       </div>
     </header>
 
@@ -2524,6 +2593,14 @@ function renderTest() {
   }
 
   const needsInput = q.type === 'type_roman' || q.type === 'build_syllable';
+
+  if (needsInput && isCompactTestLayout()) {
+    const thaiHtml = q.type === 'build_syllable' || q.type === 'type_roman'
+      ? thaiHero(q.word.thai)
+      : content;
+    return renderTypedTestCompact({ cur, total, heartsHtml, scoreAnim, thaiHtml });
+  }
+
   const actions = renderSlideActions({
     exit: { id: 'test-exit-btn', label: 'Exit', onclick: 'exitTest()' },
     primary: needsInput
