@@ -292,8 +292,15 @@ function clearTypedInputDock() {
     dock.style.bottom = '';
     dock.setAttribute('aria-hidden', 'true');
   }
-  if (app) app.style.paddingBottom = '';
-  document.body.classList.remove('has-typed-dock');
+  if (app) {
+    app.style.paddingBottom = '';
+    app.style.maxHeight = '';
+    app.style.minHeight = '';
+  }
+  document.body.classList.remove('has-typed-dock', 'keyboard-open', 'typing-focus');
+  document.documentElement.style.removeProperty('--vvh');
+  document.documentElement.style.removeProperty('--keyboard-inset');
+  document.documentElement.style.removeProperty('--typed-dock-height');
   stopDockTracking();
 }
 
@@ -316,35 +323,45 @@ function positionTypedInputDock() {
   if (!dock?.classList.contains('is-active')) return;
   const vv = window.visualViewport;
   const root = document.documentElement;
-  const innerH = window.innerHeight;
+  const layoutH = window.innerHeight;
   const focused = document.activeElement?.id === 'answer-input';
   const typing = focused || document.body.classList.contains('typing-focus');
 
-  let bottomInset = 0;
-  let visibleH = innerH;
+  let keyboardInset = 0;
+  let visibleH = layoutH;
   if (vv) {
-    bottomInset = Math.max(0, Math.round(innerH - vv.offsetTop - vv.height));
+    keyboardInset = Math.max(0, Math.round(layoutH - vv.offsetTop - vv.height));
     visibleH = Math.round(vv.height);
   }
-  if (typing && bottomInset < 120) {
-    bottomInset = Math.round(innerH * 0.52);
-    visibleH = innerH - bottomInset;
+
+  // Overlay keyboards (Samsung etc.): visualViewport often stays full-size.
+  // Only estimate when focused, viewport has not resized, and there is room
+  // for both a keyboard band and the question (skip when layout already shrunk).
+  const viewportStillFull = visibleH >= layoutH * 0.88;
+  if (typing && keyboardInset < 80 && viewportStillFull && layoutH >= 560) {
+    keyboardInset = Math.round(layoutH * 0.42);
+    visibleH = layoutH - keyboardInset;
   }
 
-  dock.style.bottom = `${bottomInset}px`;
-  root.style.setProperty('--vvh', `${visibleH}px`);
-  root.style.setProperty('--keyboard-inset', `${bottomInset}px`);
-  root.style.setProperty('--typed-dock-height', `${dock.offsetHeight}px`);
+  const dockH = Math.max(dock.offsetHeight || 0, 56);
+  // Room for question + feedback above the dock (never include keyboard in padding).
+  const contentH = Math.max(160, visibleH - dockH - 8);
 
-  const kbOpen = bottomInset > 60 || visibleH < innerH * 0.78;
+  dock.style.bottom = `${keyboardInset}px`;
+  root.style.setProperty('--vvh', `${contentH}px`);
+  root.style.setProperty('--keyboard-inset', `${keyboardInset}px`);
+  root.style.setProperty('--typed-dock-height', `${dockH}px`);
+
+  const kbOpen = keyboardInset > 60 || visibleH < layoutH * 0.85;
   document.body.classList.toggle('keyboard-open', kbOpen);
   document.body.classList.toggle('typing-focus', typing);
 
   const app = document.getElementById('app');
   if (app) {
-    app.style.paddingBottom = typing
-      ? `${dock.offsetHeight + bottomInset + 8}px`
-      : `${dock.offsetHeight + 8}px`;
+    app.style.maxHeight = `${contentH}px`;
+    app.style.minHeight = '0';
+    // Dock is position:fixed — only reserve its height when it sits on the page bottom.
+    app.style.paddingBottom = kbOpen ? '0px' : `${dockH + 8}px`;
   }
 }
 

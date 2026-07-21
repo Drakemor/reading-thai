@@ -1,10 +1,9 @@
 /**
- * Mobile layout audit: typed quiz input dock + lesson cards.
+ * Mobile layout audit: typed quiz must keep question + feedback visible
+ * while the input dock stays above an overlay keyboard.
  *
- * Tests what matters on real phones:
- * 1. Input lives in #typed-input-dock (body child), not inside #app
- * 2. At shrunk viewport height (keyboard resized), input stays visible
- * 3. On full-height viewport with focused input, dock lifts above estimated keyboard
+ * Critical regression this catches:
+ * - lifting the dock must NOT crush #app content to zero height
  *
  * Run: npm run smoke:mobile
  */
@@ -32,26 +31,61 @@ function assertOk(label, rows) {
 
 async function auditRects(page, checks) {
   return page.evaluate((items) => {
-    return items.map(({ sel, maxBottom }) => {
+    return items.map(({ sel, maxBottom, minHeight }) => {
       const el = document.querySelector(sel);
       if (!el) return { sel, ok: false, note: 'missing' };
       const r = el.getBoundingClientRect();
       const style = getComputedStyle(el);
-      if (style.display === 'none' || style.visibility === 'hidden') {
-        return { sel, ok: false, note: 'hidden', ...r.toJSON?.() };
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) {
+        return { sel, ok: false, note: 'hidden', top: r.top, bottom: r.bottom, height: r.height };
       }
       const bottomLimit = maxBottom ?? window.innerHeight;
-      const ok = r.width > 0 && r.height > 0 && r.top >= -2 && r.bottom <= bottomLimit + 2;
+      const tallEnough = r.height >= (minHeight ?? 1);
+      const ok = r.width > 0 && tallEnough && r.top >= -2 && r.bottom <= bottomLimit + 2;
       return {
         sel,
         ok,
         top: r.top,
         bottom: r.bottom,
+        height: r.height,
         maxBottom: bottomLimit,
-        note: ok ? 'ok' : 'clipped',
+        note: ok ? 'ok' : !tallEnough ? 'too-small' : 'clipped',
       };
     });
   }, checks);
+}
+
+async function quizLayoutSnapshot(page) {
+  return page.evaluate(() => {
+    const dock = document.getElementById('typed-input-dock');
+    const input = document.getElementById('answer-input');
+    const thai = document.querySelector('#test-question .thai-glyph-hero');
+    const feedback = document.querySelector('#test-question .fb-strip');
+    const exitBtn = document.getElementById('test-exit-btn');
+    const app = document.getElementById('app');
+    const dockR = dock?.getBoundingClientRect();
+    const thaiR = thai?.getBoundingClientRect();
+    const fbR = feedback?.getBoundingClientRect();
+    const inputR = input?.getBoundingClientRect();
+    return {
+      dockInBody: dock?.parentElement === document.body,
+      inputInDock: !!input?.closest('#typed-input-dock'),
+      dockBottomCss: dock?.style.bottom || '',
+      dockTop: dockR?.top ?? null,
+      inputBottom: inputR?.bottom ?? null,
+      thaiHeight: thaiR?.height ?? 0,
+      thaiBottom: thaiR?.bottom ?? null,
+      feedbackHeight: fbR?.height ?? 0,
+      feedbackBottom: fbR?.bottom ?? null,
+      exitHeight: exitBtn?.getBoundingClientRect().height ?? 0,
+      appMaxHeight: app?.style.maxHeight || '',
+      appPadBottom: app?.style.paddingBottom || '',
+      typing: document.body.classList.contains('typing-focus'),
+      keyboardOpen: document.body.classList.contains('keyboard-open'),
+      vvh: getComputedStyle(document.documentElement).getPropertyValue('--vvh').trim(),
+      innerH: window.innerHeight,
+    };
+  });
 }
 
 async function showLessonSlide(page, type) {
@@ -68,30 +102,28 @@ async function showLessonSlide(page, type) {
   await page.waitForTimeout(120);
 }
 
-async function auditTypedDock(page, tag, visibleBottom) {
+/** Content + controls must all fit in the visible band above the keyboard zone. */
+async function assertQuizUsable(page, tag, visibleBottom) {
   await page.waitForSelector('#typed-input-dock.is-active', { timeout: 5000 });
-  const dockParent = await page.evaluate(() => {
-    const dock = document.getElementById('typed-input-dock');
-    const input = document.getElementById('answer-input');
-    return {
-      dockInBody: dock?.parentElement === document.body,
-      inputInDock: input?.closest('#typed-input-dock') != null,
-      dockBottom: dock?.style.bottom || '',
-      position: dock ? getComputedStyle(dock).position : '',
-    };
-  });
-  if (!dockParent.dockInBody) throw new Error(`${tag}: dock not direct child of body`);
-  if (!dockParent.inputInDock) throw new Error(`${tag}: input not inside dock`);
-  if (dockParent.position !== 'fixed') throw new Error(`${tag}: dock not position:fixed`);
+  const snap = await quizLayoutSnapshot(page);
+  if (!snap.dockInBody) throw new Error(`${tag}: dock not direct child of body`);
+  if (!snap.inputInDock) throw new Error(`${tag}: input not inside dock`);
 
-  await page.focus('#answer-input');
-  await page.waitForTimeout(100);
+  assertOk(`${tag} visible chrome`, await auditRects(page, [
+    { sel: '#test-exit-btn', maxBottom: visibleBottom, minHeight: 20 },
+    { sel: '#test-question .thai-glyph-hero', maxBottom: visibleBottom, minHeight: 28 },
+    { sel: '#answer-input', maxBottom: visibleBottom, minHeight: 36 },
+    { sel: '#answer-submit-btn', maxBottom: visibleBottom, minHeight: 36 },
+  ]));
 
-  assertOk(`${tag} dock visible`, await auditRects(page, [
-    { sel: '#typed-input-dock', maxBottom: visibleBottom },
-    { sel: '#answer-input', maxBottom: visibleBottom },
-    { sel: '#answer-submit-btn', maxBottom: visibleBottom },
-    { sel: '#test-exit-btn', maxBottom: visibleBottom },
+  if (snap.thaiBottom != null && snap.dockTop != null && snap.thaiBottom > snap.dockTop + 4) {
+    throw new Error(`${tag}: Thai word overlaps dock (thaiBottom=${snap.thaiBottom}, dockTop=${snap.dockTop})`);
+  }
+}
+
+async function assertFeedbackVisible(page, tag, visibleBottom) {
+  assertOk(`${tag} feedback`, await auditRects(page, [
+    { sel: '#test-question .fb-strip', maxBottom: visibleBottom, minHeight: 24 },
   ]));
 }
 
@@ -121,19 +153,25 @@ async function main() {
       name: 'mobile-full-quiz',
       viewport: MOBILE,
       url: '/?demo=quiz',
-      run: (page) => auditTypedDock(page, 'mobile-full-quiz', MOBILE.height),
+      run: (page) => assertQuizUsable(page, 'mobile-full-quiz', MOBILE.height),
     },
     {
       name: 'mobile-full-feedback',
       viewport: MOBILE,
       url: '/?demo=feedback',
-      run: (page) => auditTypedDock(page, 'mobile-full-feedback', MOBILE.height),
+      run: async (page) => {
+        await assertQuizUsable(page, 'mobile-full-feedback', MOBILE.height);
+        await assertFeedbackVisible(page, 'mobile-full-feedback', MOBILE.height);
+      },
     },
     {
       name: 'mobile-keyboard-quiz',
       viewport: KEYBOARD_RESIZED,
       url: '/?demo=feedback',
-      run: (page) => auditTypedDock(page, 'mobile-keyboard-quiz', KEYBOARD_RESIZED.height),
+      run: async (page) => {
+        await assertQuizUsable(page, 'mobile-keyboard-quiz', KEYBOARD_RESIZED.height);
+        await assertFeedbackVisible(page, 'mobile-keyboard-quiz', KEYBOARD_RESIZED.height);
+      },
     },
     {
       name: 'mobile-focus-lift',
@@ -142,25 +180,29 @@ async function main() {
       run: async (page) => {
         await page.waitForSelector('#typed-input-dock.is-active');
         await page.locator('#answer-input').tap();
-        await page.waitForTimeout(250);
-        const visibleBottom = Math.round(MOBILE.height * 0.52);
-        assertOk('mobile-focus-lift', await auditRects(page, [
-          { sel: '#answer-input', maxBottom: visibleBottom },
-          { sel: '#answer-submit-btn', maxBottom: visibleBottom },
-        ]));
-        const lifted = await page.evaluate(() => {
-          const dock = document.getElementById('typed-input-dock');
-          return {
-            bottom: dock?.style.bottom || '',
-            typing: document.body.classList.contains('typing-focus'),
-            vvH: window.visualViewport?.height ?? window.innerHeight,
-            innerH: window.innerHeight,
-          };
-        });
-        if (!lifted.typing) throw new Error('mobile-focus-lift: typing-focus not set after tap');
-        if (!lifted.bottom || parseInt(lifted.bottom, 10) < 200) {
-          throw new Error(`mobile-focus-lift: dock not lifted (${lifted.bottom}) vv=${lifted.vvH} inner=${lifted.innerH}`);
+        await page.waitForTimeout(300);
+
+        const snap = await quizLayoutSnapshot(page);
+        const keyboardTop = Math.round(MOBILE.height * 0.58); // content must stay above ~42% keyboard
+        if (!snap.typing) throw new Error('mobile-focus-lift: typing-focus not set after tap');
+        if (!snap.dockBottomCss || parseInt(snap.dockBottomCss, 10) < 180) {
+          throw new Error(`mobile-focus-lift: dock not lifted (${JSON.stringify(snap)})`);
         }
+        // The bug we hit: padding included keyboard inset and crushed content to nothing.
+        if (snap.thaiHeight < 28) {
+          throw new Error(`mobile-focus-lift: Thai question collapsed (${JSON.stringify(snap)})`);
+        }
+        if (snap.feedbackHeight < 24) {
+          throw new Error(`mobile-focus-lift: feedback collapsed (${JSON.stringify(snap)})`);
+        }
+        if (snap.exitHeight < 20) {
+          throw new Error(`mobile-focus-lift: exit control collapsed (${JSON.stringify(snap)})`);
+        }
+        if (snap.inputBottom == null || snap.inputBottom > keyboardTop + 2) {
+          throw new Error(`mobile-focus-lift: input under keyboard zone (${JSON.stringify(snap)})`);
+        }
+        await assertQuizUsable(page, 'mobile-focus-lift', keyboardTop);
+        await assertFeedbackVisible(page, 'mobile-focus-lift', keyboardTop);
       },
     },
     {
@@ -170,22 +212,16 @@ async function main() {
       run: async (page) => {
         await page.waitForSelector('#typed-input-dock.is-active');
         await page.locator('#answer-input').tap();
-        await page.waitForTimeout(250);
-        const metrics = await page.evaluate(() => {
-          const input = document.getElementById('answer-input');
-          const r = input.getBoundingClientRect();
-          const liftLine = window.innerHeight * 0.52;
-          return {
-            dockBottom: document.getElementById('typed-input-dock')?.style.bottom || '',
-            inputBottom: r.bottom,
-            liftLine,
-            innerH: window.innerHeight,
-            ok: r.bottom <= liftLine + 2,
-          };
-        });
-        if (!metrics.ok) {
-          throw new Error(`mobile-overlay-keyboard: input not lifted above keyboard zone (${JSON.stringify(metrics)})`);
+        await page.waitForTimeout(300);
+        const snap = await quizLayoutSnapshot(page);
+        const keyboardTop = Math.round(MOBILE.height * 0.58);
+        if (snap.thaiHeight < 28) {
+          throw new Error(`mobile-overlay-keyboard: lost question (${JSON.stringify(snap)})`);
         }
+        if (snap.inputBottom == null || snap.inputBottom > keyboardTop + 2) {
+          throw new Error(`mobile-overlay-keyboard: input not above keyboard (${JSON.stringify(snap)})`);
+        }
+        await assertQuizUsable(page, 'mobile-overlay-keyboard', keyboardTop);
       },
     },
     {
