@@ -114,6 +114,25 @@
       if (!prev || (w.addedAt || 0) < (prev.addedAt || 0)) weakMap.set(key, w);
     });
 
+    const letterKeyFn = k => k;
+    const letterMap = new Map();
+    [...(a.weakLetters || []), ...(b.weakLetters || [])].forEach(w => {
+      if (!w || !w.key) return;
+      const key = letterKeyFn(w.key);
+      const prev = letterMap.get(key);
+      if (!prev) {
+        letterMap.set(key, { ...w });
+        return;
+      }
+      letterMap.set(key, {
+        ...prev,
+        ...w,
+        mistakes: Math.max(prev.mistakes || 0, w.mistakes || 0),
+        lastFail: Math.max(prev.lastFail || 0, w.lastFail || 0),
+        addedAt: Math.min(prev.addedAt || Infinity, w.addedAt || Infinity),
+      });
+    });
+
     const failMemory = { ...(b.failMemory || {}) };
     Object.keys(a.failMemory || {}).forEach(wordId => {
       const av = a.failMemory[wordId];
@@ -159,6 +178,7 @@
       lessonScores,
       wordMastery,
       weakWords: [...weakMap.values()],
+      weakLetters: [...letterMap.values()],
       failMemory,
       totalAttempts: maxNum(a.totalAttempts, b.totalAttempts),
       correctAttempts: maxNum(a.correctAttempts, b.correctAttempts),
