@@ -1033,15 +1033,37 @@ function analyzeTypedAnswer(word, answer) {
 
 function renderReadingBreakdown(analysis) {
   if (!analysis?.units?.length || analysis.correct) return '';
-  const rows = analysis.units.map(u => {
-    const cls = u.ok ? 'reading-unit-ok' : 'reading-unit-bad';
-    const icon = u.ok ? '✓' : '✗';
-    const detail = u.ok
-      ? escHtml(u.expected || u.roman || '')
-      : `expected <strong>${escHtml(u.expected || u.roman || '—')}</strong> · got <strong>${escHtml(u.got || '—')}</strong>`;
-    return `<li class="reading-unit ${cls}"><span class="reading-unit-icon" aria-hidden="true">${icon}</span><span class="reading-unit-label">${formatMixedThai(u.label || u.key, 'thai-glyph')}</span><span class="reading-unit-detail">${detail}</span></li>`;
+  const wrong = analysis.units.filter(u => !u.ok && u.roman);
+  if (!wrong.length) return '';
+
+  const summary = analysis.summary;
+  const headline = summary?.headline
+    ? `<p class="reading-mistake-headline m-0">${escHtml(summary.headline)}</p>`
+    : '';
+  const rightNote = summary?.rightNote
+    ? `<p class="reading-mistake-right m-0">${escHtml(summary.rightNote)}</p>`
+    : '';
+
+  const rows = wrong.map(u => {
+    const exp = u.expected || u.roman || '—';
+    const got = u.got || '—';
+    let kindLabel = 'Letter';
+    if (u.kind === 'vowel' || (u.kind === 'rule' && u.roman)) kindLabel = 'Vowel';
+    else if (u.kind === 'cluster') kindLabel = 'Cluster';
+    else if (u.role === 'final') kindLabel = 'Final';
+    else if (u.kind === 'consonant') kindLabel = 'Consonant';
+    return `<li class="reading-unit reading-unit-bad">
+      <span class="reading-unit-icon" aria-hidden="true">✗</span>
+      <span class="reading-unit-label">${escHtml(kindLabel)} · ${formatMixedThai(u.label || u.key, 'thai-glyph')}</span>
+      <span class="reading-unit-detail">expected <strong>${escHtml(exp)}</strong> · you wrote <strong>${escHtml(got)}</strong></span>
+    </li>`;
   }).join('');
-  return `<ul class="reading-breakdown" aria-label="Letter breakdown">${rows}</ul>`;
+
+  return `<div class="reading-feedback" aria-label="What went wrong">
+    ${headline}
+    ${rightNote}
+    <ul class="reading-breakdown">${rows}</ul>
+  </div>`;
 }
 
 function passRateFor(isBoss) {
@@ -2174,6 +2196,56 @@ function resetProgress() {
     state = defaultState(); saveState(); render();
   }
 }
+
+function resetWeakLetters() {
+  const letterCount = (state.weakLetters || []).length;
+  const hasLegacy = (state.weakWords || []).length > 0;
+  const hasFailMemory = Object.keys(state.failMemory || {}).length > 0;
+  if (!letterCount && !hasLegacy && !hasFailMemory) {
+    alert('No weak letters to clear.');
+    return;
+  }
+  const label = letterCount
+    ? `${letterCount} weak letter${letterCount === 1 ? '' : 's'}`
+    : 'letter review data';
+  if (!confirm(`Clear ${label} and failed-word memory? This cannot be undone.`)) return;
+  state.weakLetters = [];
+  state.weakWords = [];
+  state.failMemory = {};
+  letterDrill = null;
+  if (state.currentLessonId === LETTER_DRILL_ID) {
+    state.currentLessonId = 'basic-1';
+    lessonSlides = null;
+    if (currentScreen === 'lesson') currentScreen = 'review';
+  }
+  saveState();
+  render();
+}
+
+function resetLessonProgress() {
+  const done = (state.completedLessons || []).length;
+  const scored = Object.keys(state.lessonScores || {}).length;
+  const unlocked = (state.unlockedLessons || []).length;
+  if (!done && scored === 0 && unlocked <= 1) {
+    alert('Lesson progress is already at the start.');
+    return;
+  }
+  if (!confirm('Reset lesson unlocks, completions, and test scores? Word mastery is cleared too. Total score and streak are kept.')) return;
+  state.completedLessons = [];
+  state.unlockedLessons = ['basic-1'];
+  state.lessonScores = {};
+  state.wordMastery = {};
+  state.currentLessonId = 'basic-1';
+  state.bossTestsPassedByFont = { basic: false, medium: false, advanced: false };
+  testSession = null;
+  letterDrill = null;
+  lessonSlides = null;
+  lessonSlideIdx = 0;
+  lessonReveal = {};
+  if (currentScreen === 'lesson' || currentScreen === 'test') currentScreen = 'dashboard';
+  saveState();
+  render();
+}
 function exportProgress() {
   const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='thai-reading-quest-progress.json'; a.click();
@@ -2609,10 +2681,16 @@ function renderDashboard() {
 
         <details class="panel panel-quiet">
           <summary>Data</summary>
-          <div class="panel-body flex gap-2">
-            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="4" onclick="exportProgress()">Export</button>
-            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="5" onclick="importProgress()">Import</button>
-            <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-rose-400 rounded-xl text-sm" data-kb-index="6" onclick="resetProgress()">Reset</button>
+          <div class="panel-body space-y-2">
+            <div class="flex gap-2">
+              <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="4" onclick="exportProgress()">Export</button>
+              <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-sm" data-kb-index="5" onclick="importProgress()">Import</button>
+              <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-rose-400 rounded-xl text-sm" data-kb-index="6" onclick="resetProgress()">Reset all</button>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-amber-200 rounded-xl text-sm" onclick="resetWeakLetters()">Clear weak letters</button>
+              <button type="button" class="kb-btn flex-1 py-2 bg-slate-800 text-amber-200 rounded-xl text-sm" onclick="resetLessonProgress()">Reset lessons</button>
+            </div>
           </div>
         </details>
       </aside>
@@ -3027,6 +3105,7 @@ function renderReview() {
     <div class="shell-stage shell-stage-wide space-y-4">
       <p class="text-slate-400 text-sm m-0">We track consonants, vowels, and reading rules you miss — not whole words. Each session teaches your top 5 weak spots with slides, then a short test from material you already know.</p>
       <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="goLetterDrill()">Start Letter Practice (Enter)</button>
+      ${weak.length ? `<button type="button" class="kb-btn w-full py-3 bg-slate-800 text-amber-200 rounded-2xl text-sm font-semibold" onclick="resetWeakLetters()">Clear all weak letters (${weak.length})</button>` : ''}
       <div class="shell-grid shell-grid-lessons">
         ${weak.slice(0, 20).map(w => `<div class="panel space-y-2 anim-card">
           <p class="font-semibold text-slate-100">${formatMixedThai(w.label, 'thai-glyph')}</p>

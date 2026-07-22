@@ -278,26 +278,133 @@
     return dp[m][n];
   }
 
+  function consonantAlternatives(sym, role, rules) {
+    const primary = consonantRoman(sym, role, rules);
+    const meta = symbolMeta(sym);
+    if (!meta) return [primary];
+    const alts = String(meta.sound)
+      .replace(/\(.*?\)/g, '')
+      .split('/')
+      .map(s => normRoman(s.trim()))
+      .filter(Boolean);
+    return [...new Set([primary, ...alts])];
+  }
+
+  /** Match units using suffix (vowel/final) then prefix (consonant) — not blind char positions. */
   function scoreUnits(units, expectedRoman, typedRoman) {
-    let expPos = 0;
-    let typPos = 0;
-    return units.map(unit => {
-      const expSeg = unit.roman || '';
-      if (!expSeg.length) {
-        return { ...unit, ok: true, expected: '—', got: '—' };
+    const rules = new Set();
+    const scored = units.map(u => ({ ...u }));
+
+    // Suffix units: finals and vowels, last in word first.
+    const suffixUnits = scored.filter(u =>
+      u.roman && (u.role === 'final' || u.kind === 'vowel' || (u.kind === 'rule' && u.roman))
+    );
+    let tRem = typedRoman;
+    let eRem = expectedRoman;
+
+    for (let i = suffixUnits.length - 1; i >= 0; i--) {
+      const unit = suffixUnits[i];
+      const exp = unit.roman;
+      const expLen = exp.length;
+      const typedSuffix = tRem.slice(-expLen);
+      const expectedHas = eRem.endsWith(exp);
+
+      if (expectedHas && typedSuffix === exp) {
+        unit.ok = true;
+        unit.expected = exp;
+        unit.got = exp;
+        tRem = tRem.slice(0, -expLen);
+        eRem = eRem.slice(0, -expLen);
+        continue;
       }
-      const expSlice = expectedRoman.slice(expPos, expPos + expSeg.length);
-      const typSlice = typedRoman.slice(typPos, typPos + expSeg.length);
-      const ok = expSlice === typSlice && expSlice === expSeg;
-      expPos += expSeg.length;
-      typPos += expSeg.length;
-      return {
-        ...unit,
-        ok,
-        expected: expSeg,
-        got: typSlice || '—',
-      };
+
+      // Typed vowel/final sound correct even when initial consonant was wrong (haa vs thaa).
+      if (typedSuffix === exp) {
+        unit.ok = true;
+        unit.expected = exp;
+        unit.got = exp;
+        tRem = tRem.slice(0, -expLen);
+        if (expectedHas) eRem = eRem.slice(0, -expLen);
+        continue;
+      }
+
+      unit.ok = false;
+      unit.expected = exp;
+      unit.got = typedSuffix || tRem || '—';
+      if (expectedHas) eRem = eRem.slice(0, -expLen);
+      if (tRem.length >= expLen) tRem = tRem.slice(0, -expLen);
+      else tRem = '';
+    }
+
+    // Prefix units: initial consonants and clusters on what remains.
+    const prefixUnits = scored.filter(u =>
+      u.roman && (u.kind === 'cluster' || (u.kind === 'consonant' && u.role !== 'final'))
+    );
+
+    for (const unit of prefixUnits) {
+      const exp = unit.roman;
+      const alts = unit.kind === 'cluster'
+        ? [exp]
+        : consonantAlternatives(unit.symbol, unit.role || 'initial', rules);
+
+      const matched = alts.find(a => a && tRem.startsWith(a));
+      if (matched) {
+        unit.ok = true;
+        unit.expected = exp;
+        unit.got = matched;
+        tRem = tRem.slice(matched.length);
+        if (eRem.startsWith(exp)) eRem = eRem.slice(exp.length);
+        continue;
+      }
+
+      unit.ok = false;
+      unit.expected = exp;
+      // Whole leftover is what they wrote for this consonant slot.
+      unit.got = tRem || '—';
+      tRem = '';
+      if (eRem.startsWith(exp)) eRem = eRem.slice(exp.length);
+    }
+
+    // Rules / marks with no roman are informational only.
+    scored.forEach(u => {
+      if (!u.roman) {
+        u.ok = true;
+        u.expected = '—';
+        u.got = '—';
+      }
     });
+
+    return scored;
+  }
+
+  function buildMistakeSummary(scored) {
+    const wrong = scored.filter(u => !u.ok && u.roman);
+    const right = scored.filter(u => u.ok && u.roman);
+    if (!wrong.length) return { wrongLines: [], rightParts: right, wrongParts: wrong, headline: '' };
+
+    const wrongLines = wrong.map(u => {
+      const exp = u.expected || u.roman || '—';
+      const got = u.got || '—';
+      if (u.kind === 'vowel' || (u.kind === 'rule' && u.roman)) {
+        return { kind: 'vowel', text: `Vowel ${u.label}: expected “${exp}”, you wrote “${got}”` };
+      }
+      if (u.kind === 'cluster') {
+        return { kind: 'cluster', text: `Cluster ${u.label}: expected “${exp}”, you wrote “${got}”` };
+      }
+      if (u.role === 'final') {
+        return { kind: 'final', text: `Final ${u.label}: expected “${exp}”, you wrote “${got}”` };
+      }
+      return { kind: 'consonant', text: `Consonant ${u.label}: expected “${exp}”, you wrote “${got}”` };
+    });
+
+    const rightLabels = right.map(u => u.label).filter(Boolean);
+    return {
+      wrongLines,
+      wrongParts: wrong,
+      rightParts: right,
+      headline: wrongLines.map(w => w.text).join(' · '),
+      rightNote: rightLabels.length ? `Correct: ${rightLabels.join(', ')}` : '',
+    };
   }
 
   function analyzeReadingAnswer(word, typed) {
@@ -320,6 +427,7 @@
     const candidates = [...new Set([...expectedNorms, built].filter(Boolean))];
     const bestExpected = pickClosestExpected(candidates, typedNorm);
     const scored = scoreUnits(units, bestExpected, typedNorm);
+    const summary = buildMistakeSummary(scored);
 
     const wrongKeys = [];
     scored.forEach(u => {
@@ -333,6 +441,7 @@
       expected: bestExpected,
       units: scored,
       wrongKeys: [...new Set(wrongKeys)],
+      summary,
     };
   }
 
@@ -397,6 +506,7 @@
     letterSpotMeta,
     wordUsesLetterKey,
     buildRomanFromUnits,
+    buildMistakeSummary,
     RULE_SPOT_LABELS,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
