@@ -558,6 +558,42 @@ body.has-typed-dock .test-compact{
 }
 .fb-strip-detail strong{color:#fff}
 
+.reading-breakdown{
+  list-style:none;
+  margin:0.45rem 0 0;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  gap:0.35rem;
+}
+.reading-unit{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:baseline;
+  gap:0.35rem 0.5rem;
+  font-size:0.78rem;
+  line-height:1.35;
+  padding:0.35rem 0.45rem;
+  border-radius:0.55rem;
+  background:rgba(15,23,42,.55);
+}
+.reading-unit-ok .reading-unit-icon{color:#34d399}
+.reading-unit-bad{
+  background:rgba(127,29,29,.35);
+  border:1px solid rgba(248,113,113,.35);
+}
+.reading-unit-bad .reading-unit-icon{color:#fb7185}
+.reading-unit-label{
+  font-weight:600;
+  color:#e2e8f0;
+  flex:1 1 auto;
+  min-width:8rem;
+}
+.reading-unit-detail{color:#94a3b8}
+.reading-unit-detail strong{color:#fff}
+.fb-card .reading-breakdown{margin-top:0.65rem}
+.fb-strip .reading-breakdown .reading-unit{font-size:0.72rem;padding:0.25rem 0.4rem}
+
 html:fullscreen,
 html:-webkit-full-screen{
   height:100%;

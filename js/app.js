@@ -9,6 +9,17 @@ const LESSON_WORD_LIMIT = 5;
 const SURVIVAL_HEARTS = 3;
 const SURVIVAL_BATCH = 12;
 const SURVIVAL_TOP_N = 10;
+const LETTER_DRILL_ID = '__letter-drill__';
+const LETTER_DRILL_LESSON = {
+  id: LETTER_DRILL_ID,
+  level: 'practice',
+  order: 0,
+  title: 'Letter practice',
+  introduces: { consonants: [], vowels: [], rules: [] },
+  teachingCards: [],
+  examples: [],
+  practiceWordIds: [],
+};
 
 /** Spaced-repetition intervals after successive fails (ms). */
 const SRS_INTERVALS_MS = [
@@ -21,7 +32,7 @@ const SRS_INTERVALS_MS = [
 ];
 
 function defaultState() {
-  return {completedLessons:[],unlockedLessons:['basic-1'],lessonScores:{},wordMastery:{},weakWords:[],
+  return {completedLessons:[],unlockedLessons:['basic-1'],lessonScores:{},wordMastery:{},weakWords:[],weakLetters:[],
     failMemory:{},
     totalAttempts:0,correctAttempts:0,attemptsByFont:{looped:0,modern:0},
     correctByFont:{looped:0,modern:0},accuracyByExerciseType:{},totalScore:0,
@@ -37,6 +48,7 @@ let lessonReveal = {};
 let selectedOptionIdx = 0;
 let lessonSlideIdx = 0;
 let lessonSlides = null;
+let letterDrill = null;
 let navBtnIdx = 0;
 let animCtx = { slideDir: 0, timerId: null, cardFlip: false };
 
@@ -59,6 +71,7 @@ function migrateCurriculumState(s) {
       s.unlockedLessons.push('advanced-2');
     }
   }
+  if (!Array.isArray(s.weakLetters)) s.weakLetters = [];
   return s;
 }
 
@@ -456,6 +469,7 @@ function wordIsKnown(w, known) {
   if (wordNeedsMaiHanAkat(w) && !known.vowels.has('ั')) return false;
   // Hard gate -วย (ว as ua vowel) until taught — สวย is not “implicit o”
   if (wordNeedsWVowelUa(w) && !known.rules.has('w-vowel-ua')) return false;
+  if (w.rules?.includes('compound-oe-i') && !known.rules.has('compound-oe-i')) return false;
   return true;
 }
 
@@ -770,6 +784,7 @@ function testSizeForLesson(lesson, known) {
 
 function lessonNumberLabel(lesson) {
   if (!lesson) return 'Lesson';
+  if (lesson.id === LETTER_DRILL_ID) return 'Letter practice';
   if (lesson.isBoss) return `${lesson.level[0].toUpperCase()}${lesson.level.slice(1)} Boss`;
   const regular = LESSONS.filter(l => !l.isBoss);
   return `Lesson ${regularLessonIndex(lesson) + 1}/${regular.length}`;
@@ -916,6 +931,117 @@ function setMastery(wordId, font, val) {
 function addWeakWord(wordId, font) {
   const exists = state.weakWords.some(w => w.id===wordId && w.fontMode===font);
   if (!exists) state.weakWords.push({id:wordId, fontMode:font, addedAt:Date.now()});
+}
+
+function letterKeyIsKnown(key, known) {
+  if (!window.ReadingAnalysis) return true;
+  const meta = ReadingAnalysis.letterSpotMeta(key);
+  if (!meta) return true;
+  if (meta.rule) return known.rules.has(meta.rule);
+  if (meta.kind === 'cluster' && meta.symbols) {
+    return meta.symbols.every(s => known.consonants.has(s));
+  }
+  if (meta.kind === 'consonant' && meta.symbol) return known.consonants.has(meta.symbol);
+  if (meta.kind === 'vowel' && meta.symbol) return known.vowels.has(meta.symbol);
+  return true;
+}
+
+function pruneUntaughtWeakLetters() {
+  const known = getProgressKnown();
+  const before = (state.weakLetters || []).length;
+  state.weakLetters = (state.weakLetters || []).filter(w => letterKeyIsKnown(w.key, known));
+  if (state.weakLetters.length !== before) saveState();
+}
+
+function recordWeakLetters(analysis) {
+  if (!analysis?.wrongKeys?.length || !window.ReadingAnalysis) return;
+  if (!state.weakLetters) state.weakLetters = [];
+  const now = Date.now();
+  analysis.wrongKeys.forEach(key => {
+    let entry = state.weakLetters.find(w => w.key === key);
+    if (!entry) {
+      const meta = ReadingAnalysis.letterSpotMeta(key);
+      entry = {
+        key,
+        kind: meta?.kind || 'unknown',
+        label: meta?.label || key,
+        mistakes: 0,
+        addedAt: now,
+      };
+      state.weakLetters.push(entry);
+    }
+    entry.mistakes = (entry.mistakes || 0) + 1;
+    entry.lastFail = now;
+  });
+}
+
+function softenWeakLetters(keys) {
+  if (!state.weakLetters?.length || !keys?.length) return;
+  let changed = false;
+  keys.forEach(key => {
+    const entry = state.weakLetters.find(w => w.key === key);
+    if (!entry) return;
+    entry.mistakes = Math.max(0, (entry.mistakes || 0) - 1);
+    changed = true;
+    if (entry.mistakes === 0) {
+      state.weakLetters = state.weakLetters.filter(w => w.key !== key);
+    }
+  });
+  if (changed) saveState();
+}
+
+function pickWeakLettersForDrill(count = 5) {
+  pruneUntaughtWeakLetters();
+  const known = getProgressKnown();
+  return (state.weakLetters || [])
+    .filter(w => letterKeyIsKnown(w.key, known))
+    .sort((a, b) => (b.mistakes - a.mistakes) || ((b.lastFail || 0) - (a.lastFail || 0)))
+    .slice(0, count);
+}
+
+function pickPracticeWordForLetterKey(key) {
+  const known = getProgressKnown();
+  const candidates = WORDS.filter(w => wordIsKnown(w, known) && ReadingAnalysis.wordUsesLetterKey(w, key));
+  candidates.sort((a, b) => wordLessonOrder(a) - wordLessonOrder(b));
+  return candidates[0] || null;
+}
+
+function buildLetterDrillSlides(letters) {
+  const slides = [{ type: 'intro', drill: true, letters }];
+  letters.forEach(letter => {
+    slides.push({ type: 'letter-spot', letterKey: letter.key, letter });
+    const word = pickPracticeWordForLetterKey(letter.key);
+    if (word) slides.push({ type: 'practice', wordId: word.id });
+  });
+  slides.push({ type: 'test', drill: true });
+  slides._lessonId = LETTER_DRILL_ID;
+  return slides;
+}
+
+function getActiveLesson() {
+  if (state.currentLessonId === LETTER_DRILL_ID) return LETTER_DRILL_LESSON;
+  return LESSONS.find(l => l.id === state.currentLessonId);
+}
+
+function analyzeTypedAnswer(word, answer) {
+  if (window.ReadingAnalysis && word) {
+    return ReadingAnalysis.analyzeReadingAnswer(word, answer);
+  }
+  const correct = checkRoman(answer, word);
+  return { correct, units: [], wrongKeys: [], typed: normRoman(answer), expected: normRoman(word?.romanizations?.[0]) };
+}
+
+function renderReadingBreakdown(analysis) {
+  if (!analysis?.units?.length || analysis.correct) return '';
+  const rows = analysis.units.map(u => {
+    const cls = u.ok ? 'reading-unit-ok' : 'reading-unit-bad';
+    const icon = u.ok ? '✓' : '✗';
+    const detail = u.ok
+      ? escHtml(u.expected || u.roman || '')
+      : `expected <strong>${escHtml(u.expected || u.roman || '—')}</strong> · got <strong>${escHtml(u.got || '—')}</strong>`;
+    return `<li class="reading-unit ${cls}"><span class="reading-unit-icon" aria-hidden="true">${icon}</span><span class="reading-unit-label">${formatMixedThai(u.label || u.key, 'thai-glyph')}</span><span class="reading-unit-detail">${detail}</span></li>`;
+  }).join('');
+  return `<ul class="reading-breakdown" aria-label="Letter breakdown">${rows}</ul>`;
 }
 
 function passRateFor(isBoss) {
@@ -1124,12 +1250,27 @@ function focusKbButton(idx) {
 }
 
 function startTestFromLesson() {
+  if (state.currentLessonId === LETTER_DRILL_ID) {
+    startLetterDrillTest();
+    return;
+  }
   const lesson = LESSONS.find(l => l.id === state.currentLessonId);
   if (lesson) startTest(lesson.id, lesson.isBoss || false);
 }
 
 function continueAfterTest() {
   if (!testSession) return;
+  if (testSession.isLetterDrill) {
+    if (!testSession.passed) {
+      startLetterDrillTest();
+      return;
+    }
+    testSession = null;
+    letterDrill = null;
+    navBtnIdx = 0;
+    goScreen('review');
+    return;
+  }
   if (!testSession.passed) {
     startTest(testSession.lessonId, testSession.isBoss);
     return;
@@ -1215,11 +1356,22 @@ function lessonPrevSlide() {
 }
 
 function exitLesson() {
+  if (state.currentLessonId === LETTER_DRILL_ID) {
+    letterDrill = null;
+    goScreen('review');
+    return;
+  }
   goScreen('lessons');
 }
 
 function exitTest() {
+  const wasLetterDrill = testSession?.isLetterDrill;
   testSession = null;
+  if (wasLetterDrill) {
+    letterDrill = null;
+    goScreen('review');
+    return;
+  }
   goScreen('lessons');
 }
 
@@ -1751,7 +1903,7 @@ function continueAfterDeath() {
   const lessonId = testSession.lessonId;
   const isBoss = testSession.isBoss;
   const isReview = !!testSession.isReview;
-  if (isReview) startReview();
+  if (isReview) goLetterDrill();
   else startTest(lessonId, isBoss);
 }
 
@@ -1760,9 +1912,11 @@ function submitAnswer(answer) {
   const startedAt = testSession.questionStartMs || Date.now();
   const q = testSession.questions[testSession.current];
   let correct = false;
-  if (q.type === 'type_roman') correct = checkRoman(answer, q.word);
-  else if (q.type === 'choose_pron') correct = q.word.romanizations.some(r => normRoman(answer) === normRoman(r));
-  else if (q.type === 'build_syllable') correct = checkRoman(answer, q.word);
+  let readingAnalysis = null;
+  if (q.type === 'type_roman' || q.type === 'build_syllable') {
+    readingAnalysis = analyzeTypedAnswer(q.word, answer);
+    correct = readingAnalysis.correct;
+  } else if (q.type === 'choose_pron') correct = q.word.romanizations.some(r => normRoman(answer) === normRoman(r));
   else if (q.type === 'rule') correct = answer === q.answer;
 
   const font = resolveFont(q.font);
@@ -1779,9 +1933,12 @@ function submitAnswer(answer) {
     if (correct) {
       setMastery(q.word.id, font, m + 1);
       recordFailMemorySuccess(q.word.id);
+      if (readingAnalysis && window.ReadingAnalysis) {
+        softenWeakLetters(ReadingAnalysis.getReadingUnits(q.word).map(u => u.key).filter(Boolean));
+      }
     } else {
       setMastery(q.word.id, font, m - 1);
-      addWeakWord(q.word.id, font);
+      if (readingAnalysis) recordWeakLetters(readingAnalysis);
       recordFailMemory(q.word.id);
     }
   }
@@ -1801,8 +1958,8 @@ function submitAnswer(answer) {
   if (correct) ChipAudio.testCorrect();
   else ChipAudio.testWrong();
   flashScreen(correct ? 'success' : 'fail');
-  testSession.answers.push({q, answer, correct, font, durationMs, speedBonus});
-  testSession.lastFeedback = {q, answer, correct, font, durationMs, speedBonus};
+  testSession.answers.push({q, answer, correct, font, durationMs, speedBonus, readingAnalysis});
+  testSession.lastFeedback = {q, answer, correct, font, durationMs, speedBonus, readingAnalysis};
   testSession.current++;
   selectedOptionIdx = 0;
   // Start timer for next question
@@ -1886,6 +2043,7 @@ function renderLastFeedback() {
         <p class="fb-answer"><span class="${muted}">Expected</span> <strong class="text-white">“${escHtml(expected)}”</strong></p>`;
     }
   }
+  const breakdown = ans.readingAnalysis ? renderReadingBreakdown(ans.readingAnalysis) : '';
   const thai = word?.thai
     ? `<span class="${getFontClass(ans.font)} fb-thai thai-glyph anim-thai" lang="th">${escHtml(displayThaiText(word.thai))}</span>`
     : '';
@@ -1897,6 +2055,7 @@ function renderLastFeedback() {
     <div class="fb-body">
       <p class="fb-label">${label}${thai ? ` · ${thai}` : ''}</p>
       ${answerLine ? (answerLine.includes('<p class="fb-answer">') ? answerLine : `<p class="fb-answer">${answerLine}</p>`) : ''}
+      ${breakdown}
       ${typeof ans.speedBonus === 'number' ? `<p class="text-xs text-amber-300">${ans.speedBonus>0?`+${ans.speedBonus} speed bonus`:''}${ans.durationMs!=null?`${ans.speedBonus>0?' · ':''}${(ans.durationMs/1000).toFixed(1)}s` : ''}</p>` : ''}
       ${meaning ? `<p class="fb-meaning">${meaning}</p>` : ''}
     </div>
@@ -1921,12 +2080,14 @@ function renderLastFeedbackCompact() {
       ? `“${escHtml(expected)}”`
       : `You typed <strong>“${escHtml(typed || '—')}”</strong> → Expected <strong>“${escHtml(expected)}”</strong>`;
   }
+  const breakdown = ans.readingAnalysis ? renderReadingBreakdown(ans.readingAnalysis) : '';
   const thai = word?.thai
     ? ` · <span class="${getFontClass(ans.font)} thai-glyph" lang="th">${escHtml(displayThaiText(word.thai))}</span>`
     : '';
   return `<div class="${strip} anim-feedback ${ans.correct ? 'anim-feedback-correct' : 'anim-feedback-wrong'}">
     <p class="fb-strip-label m-0">${label}${thai}</p>
     ${detail ? `<p class="fb-strip-detail m-0">${detail}</p>` : ''}
+    ${breakdown}
   </div>`;
 }
 
@@ -1967,10 +2128,11 @@ function renderTestSummary() {
 
 function finishTest() {
   const pct = testSession.score / testSession.questions.length;
-  const lesson = LESSONS.find(l => l.id === testSession.lessonId);
+  const isLetterDrill = !!testSession.isLetterDrill;
+  const lesson = isLetterDrill ? null : LESSONS.find(l => l.id === testSession.lessonId);
   const passed = testSession.isBoss ? pct >= PASS_BOSS : pct >= PASS_NORMAL;
   let newlyUnlocked = false;
-  if (passed && lesson && !testSession.isReview) {
+  if (passed && lesson && !testSession.isReview && !isLetterDrill) {
     if (!state.completedLessons.includes(testSession.lessonId)) state.completedLessons.push(testSession.lessonId);
     const next = LESSONS.find(l => l.unlockAfter === testSession.lessonId);
     if (next && !state.unlockedLessons.includes(next.id)) {
@@ -2027,32 +2189,72 @@ function importProgress() {
   inp.click();
 }
 
-function startReview() {
-  pruneUntaughtProgressWords();
+function goLetterDrill() {
+  const letters = pickWeakLettersForDrill(5);
+  if (!letters.length) {
+    alert('No weak letters to practice yet — finish a few typed questions and we will track what to fix.');
+    return;
+  }
+  letterDrill = { letters, targets: letters.map(l => l.key) };
+  state.currentLessonId = LETTER_DRILL_ID;
+  lessonSlideIdx = 0;
+  lessonSlides = buildLetterDrillSlides(letters);
+  lessonReveal = {};
+  navBtnIdx = 0;
+  currentScreen = 'lesson';
+  saveState();
+  render();
+}
+
+function startLetterDrillTest() {
+  if (!letterDrill?.targets?.length) return;
   const known = getProgressKnown();
-  let words = state.weakWords
-    .map(w => ({...w, word:WORDS.find(x=>x.id===w.id)}))
-    .filter(w => w.word && wordIsKnown(w.word, known));
-  // Prefer SRS-due fails at the front of the review queue
-  words.sort((a, b) => srsPriority(b.id) - srsPriority(a.id));
-  if (words.length === 0) { alert('No weak words to review!'); return; }
+  const targetSet = new Set(letterDrill.targets);
+  const pool = [...new Map(
+    WORDS.filter(w => {
+      if (!wordIsKnown(w, known)) return false;
+      return ReadingAnalysis.getReadingUnits(w).some(u =>
+        targetSet.has(u.key) || (u.rule && targetSet.has('rule:' + u.rule))
+      );
+    }).map(w => [w.id, w])
+  ).values()];
+  if (!pool.length) {
+    alert('No practice words available for these letters yet.');
+    return;
+  }
+
+  const usedKeys = new Set();
+  const qs = [];
+  letterDrill.targets.forEach((key, i) => {
+    const word = pool.find(w => ReadingAnalysis.wordUsesLetterKey(w, key) && !isWordUsed(w, usedKeys));
+    if (!word) return;
+    const q = buildReadingQuestion('type_roman', word, pool, pickReadingFont(i));
+    tryAddQuestion(qs, q, usedKeys);
+  });
+  let guard = 0;
+  while (qs.length < Math.min(10, pool.length) && guard++ < 30) {
+    const available = unusedWords(pool, usedKeys);
+    if (!available.length) break;
+    const word = available[Math.floor(Math.random() * available.length)];
+    const q = buildReadingQuestion('type_roman', word, pool, pickReadingFont(qs.length));
+    tryAddQuestion(qs, q, usedKeys);
+  }
+  if (!qs.length) { alert('Could not build a letter practice test.'); return; }
+
   ChipAudio.testStart();
-  const qs = words.slice(0,15).map((w, i) => ({
-    type:'type_roman', word:w.word, font:pickReadingFont(i),
-    prompt:'Read this. Type the pronunciation:'
-  }));
-  const heartsTotal = heartsForTest(qs.length, false);
+  selectedOptionIdx = 0;
+  animCtx.slideDir = 0;
   testSession = {
-    lessonId: 'review',
+    lessonId: LETTER_DRILL_ID,
+    isLetterDrill: true,
     isBoss: false,
-    questions: qs,
+    questions: shuffle(qs),
     current: 0,
     score: 0,
     speedBonusTotal: 0,
     mistakes: 0,
-    heartsTotal,
+    heartsTotal: heartsForTest(qs.length, false),
     answers: [],
-    isReview: true,
     lastFeedback: null,
     finished: false,
     passed: false,
@@ -2060,10 +2262,14 @@ function startReview() {
     dying: false,
     awaitingResults: false,
   };
-  selectedOptionIdx = 0;
-  animCtx.slideDir = 0;
   currentScreen = 'test';
   testSession.questionStartMs = Date.now();
+  render();
+}
+
+function markLetterKnown(key) {
+  state.weakLetters = (state.weakLetters || []).filter(w => w.key !== key);
+  saveState();
   render();
 }
 
@@ -2353,7 +2559,7 @@ function renderDashboard() {
           <button type="button" class="kb-btn w-full py-4 bg-rose-900/80 text-rose-100 border border-rose-700/60 rounded-2xl font-semibold" data-kb-index="1" onclick="startSurvival()">Survival · 3 hearts${state.survivalBest ? ` · best ${state.survivalBest}` : ''}</button>
         </div>
         <div class="cta-stack" style="grid-template-columns:1fr 1fr">
-          <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="2" onclick="goScreen('review')">Weak Words</button>
+          <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="2" onclick="goScreen('review')">Letter Practice</button>
           <button type="button" class="kb-btn w-full py-3 bg-slate-800 text-slate-100 rounded-2xl font-semibold" data-kb-index="3" onclick="goScreen('lessons')">All Lessons</button>
         </div>
         <p class="hint-footer">↑ ↓ navigate · Enter select</p>
@@ -2368,7 +2574,7 @@ function renderDashboard() {
               <div class="stat-list-row"><span>Lessons done</span><strong>${doneCount}</strong></div>
               <div class="stat-list-row"><span>Score</span><strong>${state.totalScore}</strong></div>
               <div class="stat-list-row"><span>Accuracy</span><strong>${wa}%</strong></div>
-              <div class="stat-list-row"><span>Weak words</span><strong>${state.weakWords.length}</strong></div>
+              <div class="stat-list-row"><span>Weak letters</span><strong>${(state.weakLetters || []).length}</strong></div>
             </div>
             <div class="mt-3">
               <div class="flex justify-between text-sm mb-1"><span class="text-slate-400">Overall</span><span>${wp}%</span></div>
@@ -2481,20 +2687,67 @@ function renderSymbolCard(sym) {
   </div>`;
 }
 
+function renderLetterSpotCard(letterKey, letterEntry) {
+  const meta = ReadingAnalysis.letterSpotMeta(letterKey);
+  const mistakes = letterEntry?.mistakes || 0;
+  if (meta.kind === 'cluster' && meta.symbols?.length) {
+    const hero = meta.symbols.map(s => `<span class="thai-glyph thai-glyph-pair font-thai-looped" lang="th">${escHtml(displayThaiText(s))}</span>`).join('<span class="text-slate-500 mx-1">+</span>');
+    return `<div class="symbol-card-wrap anim-card space-y-3">
+      <p class="text-amber-300 text-sm uppercase tracking-wide">Weak spot · ${mistakes} miss${mistakes === 1 ? '' : 'es'}</p>
+      <h2 class="text-2xl font-bold m-0">${formatMixedThai(meta.label, 'thai-glyph')}</h2>
+      <div class="symbol-duo">${hero}</div>
+      <p class="text-slate-300"><strong>${escHtml(meta.roman || '')}</strong> — ${formatMixedThai(meta.hint || 'Read as one cluster.', 'thai-glyph')}</p>
+    </div>`;
+  }
+  if (meta.kind === 'rule') {
+    return `<div class="panel teach-card anim-card space-y-3">
+      <p class="text-amber-300 text-sm uppercase tracking-wide">Rule to fix · ${mistakes} miss${mistakes === 1 ? '' : 'es'}</p>
+      <h3 class="text-2xl font-bold m-0">${formatMixedThai(meta.label, 'thai-glyph')}</h3>
+      <p class="teach-copy">${formatMixedThai(meta.hint || meta.label, 'thai-glyph')}</p>
+      ${meta.roman ? `<p class="text-emerald-300">Sounds like: <strong>${escHtml(meta.roman)}</strong></p>` : ''}
+    </div>`;
+  }
+  const sym = meta.symbol || meta.thai || letterKey;
+  const symRecord = SYMBOLS.find(s => s.symbol === sym);
+  if (symRecord) {
+    return `<div class="slide-body">${renderSymbolCard(sym)}<p class="text-amber-300 text-sm mt-3">${mistakes} recent miss${mistakes === 1 ? '' : 'es'} on this letter</p></div>`;
+  }
+  return `<div class="panel teach-card anim-card"><h3>${formatMixedThai(meta.label, 'thai-glyph')}</h3><p class="teach-copy">${formatMixedThai(meta.hint || '', 'thai-glyph')}</p></div>`;
+}
+
 function renderLessonView() {
-  const lesson = LESSONS.find(l => l.id === state.currentLessonId);
+  const lesson = getActiveLesson();
   if (!lesson) return '';
   if (!lessonSlides || lessonSlides._lessonId !== lesson.id) {
-    lessonSlides = buildLessonSlides(lesson);
-    lessonSlideIdx = Math.min(lessonSlideIdx, lessonSlides.length - 1);
+    if (state.currentLessonId === LETTER_DRILL_ID && letterDrill) {
+      lessonSlides = buildLetterDrillSlides(letterDrill.letters);
+    } else {
+      const realLesson = LESSONS.find(l => l.id === state.currentLessonId);
+      lessonSlides = realLesson ? buildLessonSlides(realLesson) : [];
+    }
+    lessonSlideIdx = Math.min(lessonSlideIdx, Math.max(0, (lessonSlides?.length || 1) - 1));
   }
   const slide = lessonSlides[lessonSlideIdx];
   const total = lessonSlides.length;
-  const known = getKnownBefore(lesson);
+  const known = lesson.id === LETTER_DRILL_ID
+    ? getProgressKnown()
+    : getKnownBefore(LESSONS.find(l => l.id === state.currentLessonId) || lesson);
   let body = '';
   let stageClass = 'lesson-stage';
 
-  if (slide.type === 'intro') {
+  if (slide.type === 'intro' && slide.drill) {
+    stageClass += ' lesson-stage-wide';
+    body = `<div class="slide-body space-y-5 anim-stagger">
+      <div>
+        <p class="text-slate-400 text-sm uppercase tracking-wide">Targeted practice</p>
+        <h1 class="text-3xl font-bold mt-2">Letter practice</h1>
+        <p class="text-slate-400 text-sm mt-3">Five weak spots from your recent mistakes — learn each one, then pass a short test. Only uses letters and words you have already unlocked.</p>
+      </div>
+      <div class="panel space-y-2">
+        ${(slide.letters || []).map(l => `<div class="flex justify-between gap-3 text-sm"><span>${formatMixedThai(l.label, 'thai-glyph')}</span><span class="text-rose-300 tabular-nums">${l.mistakes}×</span></div>`).join('')}
+      </div>
+    </div>`;
+  } else if (slide.type === 'intro') {
     const knownSyms = [...known.consonants, ...known.vowels];
     const newSyms = [...lesson.introduces.consonants, ...lesson.introduces.vowels];
     const newRules = lesson.introduces.rules.join(', ');
@@ -2520,6 +2773,8 @@ function renderLessonView() {
     </div>`;
   } else if (slide.type === 'symbol') {
     body = `<div class="slide-body">${renderSymbolCard(slide.sym)}</div>`;
+  } else if (slide.type === 'letter-spot') {
+    body = `<div class="slide-body">${renderLetterSpotCard(slide.letterKey, slide.letter)}</div>`;
   } else if (slide.type === 'contrast') {
     stageClass += ' lesson-stage-contrast';
     body = renderContrastSlide(CONFUSING_PAIRS.find(p => p.id === slide.pairId));
@@ -2542,6 +2797,11 @@ function renderLessonView() {
       kicker,
       footerHtml: footer,
     })}</div>`;
+  } else if (slide.type === 'test' && slide.drill) {
+    body = `<div class="slide-body"><div class="panel text-center space-y-6 anim-card">
+      <h2 class="text-3xl font-bold m-0">Ready for the letter test?</h2>
+      <p class="text-slate-400">${letterDrill?.targets?.length || 5} weak letters · typed reading · known words only</p>
+    </div></div>`;
   } else if (slide.type === 'test') {
     body = `<div class="slide-body"><div class="panel text-center space-y-6 anim-card">
       <h2 class="text-3xl font-bold m-0">Ready for the test?</h2>
@@ -2573,7 +2833,7 @@ function renderLessonView() {
   const slideAnim = animCtx.slideDir > 0 ? 'anim-slide-forward' : animCtx.slideDir < 0 ? 'anim-slide-back' : 'anim-slide-fade';
   return `<div class="shell-frame lesson-rail screen-with-actions anim-screen ${slideAnim}">
     <header class="shell-chrome shell-chrome-compact">
-      <button type="button" class="kb-btn text-slate-300 px-2 py-1 rounded-lg" onclick="exitLesson()">← Lessons</button>
+      <button type="button" class="kb-btn text-slate-300 px-2 py-1 rounded-lg" onclick="exitLesson()">← ${lesson.id === LETTER_DRILL_ID ? 'Practice' : 'Lessons'}</button>
       ${renderProgressHeader(lesson, { compact: true })}
       <span class="stat-inline">Slide ${lessonSlideIdx + 1}/${total}</span>
     </header>
@@ -2586,7 +2846,9 @@ function renderLessonView() {
 
 function renderTest() {
   if (!testSession) return '';
-  const testLesson = LESSONS.find(l => l.id === testSession.lessonId);
+  const testLesson = testSession.isLetterDrill
+    ? LETTER_DRILL_LESSON
+    : LESSONS.find(l => l.id === testSession.lessonId);
   const heartsHtml = renderHeartsBar(testSession.heartsTotal ?? 0, testSession.mistakes ?? 0);
   const chromeLesson = testLesson
     ? renderProgressHeader(testLesson, { compact: true })
@@ -2660,7 +2922,9 @@ function renderTest() {
         <p class="anim-score text-6xl font-bold ${testSession.passed?'text-emerald-400':'text-rose-400'}" style="animation-delay:140ms">${pct}%</p>
         <p class="anim-result-item text-slate-400" style="animation-delay:220ms">${testSession.score}/${testSession.questions.length} correct · ${testSession.mistakes||0} miss${(testSession.mistakes||0)===1?'':'es'}</p>
         ${testSession.speedBonusTotal ? `<p class="anim-result-item text-amber-300" style="animation-delay:240ms">Speed bonus: +${testSession.speedBonusTotal}</p>` : ''}
-        <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`}</p>
+        <p class="anim-result-item text-slate-400" style="animation-delay:260ms">${testSession.isLetterDrill
+          ? (testSession.passed ? 'Letter practice complete!' : 'Need 80% to pass this drill')
+          : (testSession.passed ? (testSession.isBoss?'Boss test cleared!':'Lesson complete!') : `Need ${testSession.isBoss?85:80}% to pass`)}</p>
         ${renderTestSummary()}
         ${nextLabel ? `<p class="anim-result-item text-amber-400 text-sm" style="animation-delay:360ms">${nextLabel}</p>` : ''}
       </div>
@@ -2670,7 +2934,9 @@ function renderTest() {
         secondary: { id: 'test-dashboard-btn', label: 'Dashboard', onclick: "testSession=null;goScreen('dashboard')" },
         primary: {
           id: 'primary-action',
-          label: testSession.passed ? 'Next Lesson' : 'Practice Again',
+          label: testSession.isLetterDrill
+            ? (testSession.passed ? 'Back to practice' : 'Try drill again')
+            : (testSession.passed ? 'Next Lesson' : 'Practice Again'),
           onclick: 'continueAfterTest()',
         },
       })}
@@ -2747,33 +3013,30 @@ function renderTest() {
 }
 
 function renderReview() {
-  pruneUntaughtProgressWords();
+  pruneUntaughtWeakLetters();
   const known = getProgressKnown();
-  const weak = state.weakWords.filter(w => {
-    const word = WORDS.find(x => x.id === w.id);
-    return word && wordIsKnown(word, known);
-  });
+  const weak = (state.weakLetters || []).filter(w => letterKeyIsKnown(w.key, known));
   const cur = LESSONS.find(l => l.id === state.currentLessonId) || LESSONS[0];
   return `<div class="shell-frame anim-screen">
     <header class="shell-chrome shell-chrome-compact">
       <button type="button" class="kb-btn text-slate-300 text-sm px-2 py-1 rounded-lg" onclick="goScreen('dashboard')">← Dashboard</button>
-      <h1 class="text-lg font-bold m-0">Weak Words</h1>
+      <h1 class="text-lg font-bold m-0">Letter Practice</h1>
       ${renderProgressHeader(cur, { compact: true })}
-      <span class="stat-inline">${weak.length} words</span>
+      <span class="stat-inline">${weak.length} weak letter${weak.length === 1 ? '' : 's'}</span>
     </header>
     <div class="shell-stage shell-stage-wide space-y-4">
-      <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="startReview()">Start Review (Enter)</button>
+      <p class="text-slate-400 text-sm m-0">We track consonants, vowels, and reading rules you miss — not whole words. Each session teaches your top 5 weak spots with slides, then a short test from material you already know.</p>
+      <button type="button" class="kb-btn kb-selected w-full py-4 bg-amber-400 text-slate-950 rounded-2xl font-bold" data-kb-index="0" onclick="goLetterDrill()">Start Letter Practice (Enter)</button>
       <div class="shell-grid shell-grid-lessons">
-        ${weak.slice(0, 20).map(w => {
-          const word = WORDS.find(x => x.id === w.id);
-          return word ? `<div class="panel space-y-2 anim-card">
-            ${renderWordAllFonts(word.thai, 'thai-glyph-pair')}
-            <div class="flex justify-end">
-              <button type="button" class="kb-btn text-xs px-2 py-1 bg-slate-800 rounded-lg text-emerald-400" onclick="markWordKnown('${w.id}')">Mark known</button>
-            </div></div>` : '';
-        }).join('')}
+        ${weak.slice(0, 20).map(w => `<div class="panel space-y-2 anim-card">
+          <p class="font-semibold text-slate-100">${formatMixedThai(w.label, 'thai-glyph')}</p>
+          <p class="text-sm text-slate-400 capitalize">${escHtml(w.kind || 'letter')} · ${w.mistakes} recent miss${w.mistakes === 1 ? '' : 'es'}</p>
+          <div class="flex justify-end">
+            <button type="button" class="kb-btn text-xs px-2 py-1 bg-slate-800 rounded-lg text-emerald-400" onclick='markLetterKnown(${JSON.stringify(w.key)})'>Mark solid</button>
+          </div>
+        </div>`).join('') || '<p class="text-slate-500">No weak letters yet — keep learning!</p>'}
       </div>
-      <p class="hint-footer">↑ ↓ navigate · Enter select · Esc dashboard</p>
+      <p class="hint-footer">↑ ↓ navigate · Enter start practice · Esc dashboard</p>
     </div>
   </div>`;
 }
@@ -3058,6 +3321,7 @@ async function bootstrap() {
   }
   state = migrateCurriculumState(state);
   pruneUntaughtProgressWords();
+  pruneUntaughtWeakLetters();
   if (document.getElementById('app')) render();
 }
 
