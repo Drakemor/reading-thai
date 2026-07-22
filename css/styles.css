@@ -850,7 +850,8 @@ html:-webkit-full-screen .app-shell{
   transition:transform 0.7s var(--ease-snappy);
 }
 .flip-card.is-flipped{transform:rotateY(180deg)}
-.flip-face{
+.flip-face,
+.flip-face.panel{
   position:absolute;
   inset:0;
   display:flex;
@@ -859,12 +860,18 @@ html:-webkit-full-screen .app-shell{
   justify-content:center;
   gap:0.75rem;
   padding:1.35rem 1.4rem;
+  /* Opaque face — translucent panels defeat backface-visibility and show the mirrored back. */
+  background:#0f172a;
+  border:1px solid var(--line);
+  border-radius:1.15rem;
   backface-visibility:hidden;
   -webkit-backface-visibility:hidden;
-  overflow:visible;
+  overflow:hidden;
   text-align:center;
+  transform-style:preserve-3d;
 }
-.flip-back{transform:rotateY(180deg)}
+.flip-front{transform:rotateY(0deg) translateZ(1px)}
+.flip-back{transform:rotateY(180deg) translateZ(1px)}
 .flip-kicker{
   margin:0;
   font-size:0.72rem;
