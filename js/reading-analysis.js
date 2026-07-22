@@ -162,6 +162,12 @@
     return null;
   }
 
+  function hasLeadingH(word) {
+    if (!word?.consonants?.length) return false;
+    if ((word.rules || []).includes('leading-h')) return word.consonants[0] === 'ห';
+    return wordNeedsLeadingH(word);
+  }
+
   function autoReadingUnits(word) {
     if (!word) return [];
     const rules = new Set(word.rules || []);
@@ -171,7 +177,17 @@
 
     let finalSym = null;
     let initials = consonants;
-    if (rules.has('final-consonant') && consonants.length >= 2) {
+    const leadingH = hasLeadingH(word);
+
+    if (leadingH) {
+      const rest = consonants.slice(1);
+      if (rules.has('final-consonant') && rest.length >= 2) {
+        finalSym = rest[rest.length - 1];
+        initials = rest.slice(0, -1);
+      } else {
+        initials = rest.slice(0, 1);
+      }
+    } else if (rules.has('final-consonant') && consonants.length >= 2) {
       finalSym = consonants[consonants.length - 1];
       initials = consonants.slice(0, -1);
     }
@@ -218,7 +234,7 @@
       });
     }
 
-    if (wordNeedsLeadingH(word)) {
+    if (leadingH) {
       units.unshift({
         kind: 'rule',
         key: 'rule:leading-h',
@@ -341,6 +357,17 @@
       u.roman && (u.kind === 'cluster' || (u.kind === 'consonant' && u.role !== 'final'))
     );
 
+    const leadingHUnit = scored.find(u => u.rule === 'leading-h');
+    if (leadingHUnit) {
+      const spuriousH = /^h/.test(typedRoman);
+      leadingHUnit.ok = !spuriousH;
+      leadingHUnit.expected = '(silent)';
+      leadingHUnit.got = spuriousH
+        ? (typedRoman.match(/^h[a-z]*?(?=[aeiouy]|$)/)?.[0] || 'h')
+        : '(none)';
+      if (spuriousH && tRem.startsWith('h')) tRem = tRem.slice(1);
+    }
+
     for (const unit of prefixUnits) {
       const exp = unit.roman;
       const alts = unit.kind === 'cluster'
@@ -365,26 +392,24 @@
       if (eRem.startsWith(exp)) eRem = eRem.slice(exp.length);
     }
 
-    // Rules / marks with no roman are informational only.
-    scored.forEach(u => {
-      if (!u.roman) {
-        u.ok = true;
-        u.expected = '—';
-        u.got = '—';
-      }
-    });
-
     return scored;
   }
 
+  function unitCountsForSummary(u) {
+    return Boolean(u.roman || u.rule === 'leading-h');
+  }
+
   function buildMistakeSummary(scored) {
-    const wrong = scored.filter(u => !u.ok && u.roman);
-    const right = scored.filter(u => u.ok && u.roman);
+    const wrong = scored.filter(u => !u.ok && unitCountsForSummary(u));
+    const right = scored.filter(u => u.ok && unitCountsForSummary(u));
     if (!wrong.length) return { wrongLines: [], rightParts: right, wrongParts: wrong, headline: '' };
 
     const wrongLines = wrong.map(u => {
       const exp = u.expected || u.roman || '—';
       const got = u.got || '—';
+      if (u.rule === 'leading-h') {
+        return { kind: 'rule', text: `${u.label}: do not write “h” — you wrote “${got}”` };
+      }
       if (u.kind === 'vowel' || (u.kind === 'rule' && u.roman)) {
         return { kind: 'vowel', text: `Vowel ${u.label}: expected “${exp}”, you wrote “${got}”` };
       }
