@@ -17,6 +17,7 @@
     'leading-h': { label: 'Leading ห is silent', thai: 'ห + sonorant', roman: '', hint: 'ห before ม/น/ง: read m/n/ng, not hm/hn/hng.' },
     'implicit-o': { label: 'Hidden short o', thai: '◌◌', roman: 'o', hint: 'Two consonants with no written vowel → short o between them.' },
     'w-vowel-ua': { label: 'ว + ย = uay', thai: '-วย', roman: 'uay', hint: 'ว is the ua vowel here, not consonant w.' },
+    'silent-mark': { label: '์ silences a letter', thai: '์', roman: '', hint: 'Garan ์ marks a letter silent — it does not add a sound.' },
   };
 
   function normRoman(s) {
@@ -136,6 +137,19 @@
     if (set.has('ำ')) {
       return { kind: 'vowel', key: 'vowel:ำ', symbols: ['ำ'], label: 'ำ = am', thai: '◌ำ', roman: 'am' };
     }
+    // Written อ after a consonant = sara o (ร้อน, มอง) — not the silent carrier alone.
+    if (set.has('อ') && !r.has('compound-oe') && !set.has('เ-อ') && !set.has('เ-')) {
+      return {
+        kind: 'vowel',
+        key: 'vowel:อ',
+        symbols: ['อ'],
+        symbol: 'อ',
+        label: 'อ = o',
+        thai: 'อ',
+        roman: 'o',
+        hint: 'อ written after the consonant is short o.',
+      };
+    }
 
     const contentVowels = (vowels || []).filter(v => !TONE_MARKS.has(v) && v !== '์');
     if (contentVowels.length === 1) {
@@ -221,6 +235,11 @@
       consonants = consonants.filter(c => c !== 'ล' && c !== 'ร');
     }
 
+    // เ + C + อ: อ is part of the oe vowel, not a second onset consonant.
+    if (rules.has('compound-oe') || (vowels.includes('เ-') && vowels.includes('เ-อ'))) {
+      consonants = consonants.filter(c => c !== 'อ');
+    }
+
     let finalSym = null;
     let initials = consonants;
     const leadingH = hasLeadingH(word);
@@ -289,6 +308,18 @@
         thai: 'ห…',
         roman: '',
         hint: RULE_SPOT_LABELS['leading-h'].hint,
+      });
+    }
+
+    if (rules.has('silent-mark') && vowels.includes('์')) {
+      units.push({
+        kind: 'rule',
+        key: 'rule:silent-mark',
+        rule: 'silent-mark',
+        label: RULE_SPOT_LABELS['silent-mark'].label,
+        thai: RULE_SPOT_LABELS['silent-mark'].thai,
+        roman: '',
+        hint: RULE_SPOT_LABELS['silent-mark'].hint,
       });
     }
 
@@ -516,6 +547,15 @@
       unit.got = tRem || '—';
       tRem = '';
       if (eRem.startsWith(exp)) eRem = eRem.slice(exp.length);
+    }
+
+    // Silent / display-only units (์, etc.) — no roman to match.
+    for (const unit of scored) {
+      if (unit.ok === undefined && !unit.roman) {
+        unit.ok = true;
+        unit.expected = '—';
+        unit.got = '—';
+      }
     }
 
     return scored;

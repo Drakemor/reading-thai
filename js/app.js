@@ -58,6 +58,28 @@ let animCtx = { slideDir: 0, timerId: null, cardFlip: false };
  * advanced-1 / advanced-1b / advanced-1c. Learners who finished the old
  * lesson keep credit for all three parts and stay unlocked into advanced-2.
  */
+const WORD_ID_RENAMES = {
+  bii: 'baan_open',
+  jaa: 'jaan',
+  me: 'men',
+  ngii: 'nguu',
+  nu: 'lung',
+  pu: 'mum',
+  nge: 'ngao',
+  faa: 'fan',
+};
+
+function renameWordIdKeys(map) {
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return map;
+  for (const [from, to] of Object.entries(WORD_ID_RENAMES)) {
+    if (Object.prototype.hasOwnProperty.call(map, from) && !Object.prototype.hasOwnProperty.call(map, to)) {
+      map[to] = map[from];
+    }
+    if (Object.prototype.hasOwnProperty.call(map, from)) delete map[from];
+  }
+  return map;
+}
+
 function migrateCurriculumState(s) {
   if (!s) return s;
   if (!Array.isArray(s.completedLessons)) s.completedLessons = [];
@@ -72,6 +94,14 @@ function migrateCurriculumState(s) {
     }
   }
   if (!Array.isArray(s.weakLetters)) s.weakLetters = [];
+  s.wordMastery = renameWordIdKeys(s.wordMastery || {});
+  s.failMemory = renameWordIdKeys(s.failMemory || {});
+  if (Array.isArray(s.weakWords)) {
+    s.weakWords = s.weakWords.map(w => {
+      if (!w || !WORD_ID_RENAMES[w.id]) return w;
+      return { ...w, id: WORD_ID_RENAMES[w.id] };
+    });
+  }
   return s;
 }
 

@@ -210,9 +210,9 @@ for (const [id, typed] of altCases) {
 // Auto: curated simple words rebuild to a known romanization
 const rebuildWhitelist = [
   'gaa', 'maa', 'naa', 'haa', 'thaa', 'chaa', 'phaa', 'khaa', 'duu', 'mii', 'mi',
-  'le', 'ko', 'lo', 'be', 'ke', 'nuu', 'muu', 'maa_dog', 'faa', 'ngaa', 'ngii',
+  'le', 'ko', 'lo', 'be', 'ke', 'nuu', 'muu', 'maa_dog', 'fan', 'ngaa', 'nguu',
   'ro', 'pho', 'khon', 'nom', 'bon', 'jon', 'mong', 'fon', 'kho', 'som', 'awk',
-  'ni', 'khii', 'we', 'bpit', 'jaa', 'me', 'mo', 'gae', 'bpai',
+  'ni', 'khii', 'we', 'bpit', 'jaan', 'men', 'mo', 'gae', 'bpai',
 ];
 for (const id of rebuildWhitelist) {
   const w = word(id);
@@ -258,7 +258,7 @@ expectCase('mii', 'mi', { correct: false, unitBad: ['vowel:ี'] });
 expectCase('mii', 'mii', { correct: true });
 expectCase('mi', 'me', { correct: false, unitBad: ['vowel:ิ'] });
 expectCase('duu', 'du', { correct: false, unitBad: ['vowel:ู'] });
-expectCase('ngii', 'ngu', { correct: false, unitBad: ['vowel:ู'] });
+expectCase('nguu', 'ngu', { correct: false, unitBad: ['vowel:ู'] });
 
 // ---------------------------------------------------------------------------
 // Leading ห is silent — all leading-h words + mistake matrix
@@ -394,9 +394,9 @@ expectCase('phe', 'phoen', { correct: false, unitBad: ['cluster:พ+ล'] });
 // Final consonants & final-sound-map
 // ---------------------------------------------------------------------------
 
-expectCase('jaa', 'jaan', { correct: true, unitOk: { 'consonant:น:final': true } });
-expectCase('jaa', 'jaa', { correct: false, unitBad: ['consonant:น:final'] });
-expectCase('jaa', 'jaam', { correct: false, unitBad: ['consonant:น:final'] });
+expectCase('jaan', 'jaan', { correct: true, unitOk: { 'consonant:น:final': true } });
+expectCase('jaan', 'jaa', { correct: false, unitBad: ['consonant:น:final'] });
+expectCase('jaan', 'jaam', { correct: false, unitBad: ['consonant:น:final'] });
 
 for (const w of finalSoundMapWords()) {
   const good = primaryRoman(w);
@@ -445,8 +445,8 @@ expectCase('khon', 'kon', {
 expectCase('nom', 'nom', { correct: true });
 expectCase('nom', 'nm', { correct: false, unitBad: ['rule:implicit-o'] });
 expectCase('bon', 'bn', { correct: false, unitBad: ['rule:implicit-o'] });
-expectCase('mong', 'mong', { correct: true });
-expectCase('mong', 'mng', { correct: false, unitBad: ['rule:implicit-o'] });
+expectCase('mong', 'mong', { correct: true, unitOk: { 'vowel:อ': true } });
+expectCase('mong', 'mng', { correct: false, unitBad: ['vowel:อ'] });
 expectCase('jon', 'jon', { correct: true });
 expectCase('jon', 'jn', { correct: false, unitBad: ['rule:implicit-o'] });
 expectCase('kho', 'kho', { correct: true });
@@ -474,14 +474,14 @@ expectCase('suay', 'say', {
 // Other vowel patterns
 // ---------------------------------------------------------------------------
 
-expectCase('nge', 'ngao', { correct: true, unitOk: { 'vowel:เ-า': true } });
-expectCase('nge', 'ngaao', { correct: false });
-expectCase('nge', 'ngae', { correct: false, unitBad: ['vowel:เ-า'] });
+expectCase('ngao', 'ngao', { correct: true, unitOk: { 'vowel:เ-า': true } });
+expectCase('ngao', 'ngaao', { correct: false });
+expectCase('ngao', 'ngae', { correct: false, unitBad: ['vowel:เ-า'] });
 expectCase('che', 'chao', { correct: true }); // tone stripped in normRoman path — เ-า composite
 expectCase('che', 'chaao', { correct: false });
 expectCase('che', 'cheaa', { correct: false });
-expectCase('me', 'men', { correct: true, unitOk: { 'vowel:เ-': true, 'consonant:น:final': true } });
-expectCase('me', 'man', {
+expectCase('men', 'men', { correct: true, unitOk: { 'vowel:เ-': true, 'consonant:น:final': true } });
+expectCase('men', 'man', {
   correct: false,
   unitBad: ['vowel:เ-'],
   unitOk: { 'consonant:น:final': true },
@@ -593,7 +593,7 @@ const auditReject = [
   ['ma', 'mnaaa'], ['na', 'naa'], ['ki', 'klio'], ['lae', 'laea'], ['naam', 'namm'],
   ['che', 'cheaa'], ['che', 'chaao'], ['suay', 'swyuay'], ['mai', 'mlai'],
   ['silent_ex', 'thmoe'], ['khao2', 'khe'], ['ne', 'nye'], ['thiang', 'thyeiing'],
-  ['bpeert', 'bpet'], ['bpeert', 'pet'], ['bpeert', 'bpeert'], ['nge', 'ngaao'],
+  ['bpeert', 'bpet'], ['bpeert', 'pet'], ['bpeert', 'bpeert'], ['ngao', 'ngaao'],
 ];
 for (const [id, typed] of auditReject) {
   expectCase(id, typed, { correct: false });
@@ -604,11 +604,28 @@ const auditAccept = [
   ['naam', 'naam'], ['che', 'chao'], ['suay', 'suay'], ['suay', 'suai'],
   ['mai', 'mai'], ['mai', 'mail'], ['silent_ex', 'term'], ['khao2', 'khao'],
   ['ne', 'noei'], ['thiang', 'thiang'], ['bpeert', 'bpoet'], ['bpeert', 'poet'],
-  ['jing', 'jing'], ['nge', 'ngao'], ['sawasdee', 'sawatdii'], ['sawasdee', 'sawadee'],
+  ['jing', 'jing'], ['ngao', 'ngao'], ['sawasdee', 'sawatdii'], ['sawasdee', 'sawadee'],
   ['awk', 'awk'], ['fim', 'fim'], ['phe', 'phloen'], ['ahaan', 'ahaan'],
+  ['ahaan', 'ahan'], ['ahaan', 'aharn'], ['khopkhun', 'kobkhun'], ['khopkhun', 'khobkhun'],
+  ['ron', 'ron'], ['je', 'joe'], ['re', 'rer'], ['gaafae', 'gafae'],
 ];
 for (const [id, typed] of auditAccept) {
   expectCase(id, typed, { correct: true });
+}
+
+// Medium leftovers: units + primary + no English joke
+{
+  const ronU = RA.getReadingUnits(word('ron'));
+  assert(ronU.some(u => u.key === 'vowel:อ'), 'ร้อน units use written อ = o');
+  assert(!ronU.some(u => u.key === 'vowel:โ-'), 'ร้อน must not claim โ-');
+  const jeU = RA.getReadingUnits(word('je'));
+  assert(jeU.some(u => u.key === 'consonant:จ'), 'เจอ onset is จ alone');
+  assert(!jeU.some(u => String(u.key).startsWith('cluster:')), 'เจอ must not cluster จ+อ');
+  const fimU = RA.getReadingUnits(word('fim'));
+  assert(fimU.some(u => u.key === 'rule:silent-mark'), 'ฟิล์ม shows silent ์ unit');
+  const awk = word('awk');
+  assert(awk.romanizations[0] === 'awk', `ออก primary should be awk, got ${awk.romanizations[0]}`);
+  assert(!(word('jo').romanizations || []).includes('joke'), 'โจ๊ก must not accept English joke');
 }
 
 for (const id of ['ma', 'na', 'ki', 'lae', 'naam', 'che', 'suay', 'mai', 'silent_ex', 'khao2', 'ne', 'thiang', 'bpeert']) {

@@ -182,13 +182,9 @@
     const units = RA.getReadingUnits(word);
     const built = units.length ? RA.buildRomanFromUnits(units) : '';
 
-    // When the author listed alternates, never invent extra garbage from broken units.
+    // When the author listed alternates, curated order is authoritative (primary first).
     if (curated.length) {
       const alts = [...curated];
-      if (built && curated.includes(built) && alts[0] !== built) {
-        // Prefer unit-built only when it matches a curated form — move it first.
-        return [built, ...alts.filter(a => a !== built)];
-      }
       // Still expand initial consonant sound swaps on the primary curated form.
       const primary = alts[0];
       const initialUnit = units.find(u => u.kind === 'consonant' && u.role !== 'final');
@@ -244,13 +240,17 @@
     const compiled = specs.map(compileWordSpec);
     if (!global.ReadingAnalysis) return compiled;
     return compiled.map(w => {
+      const hadCurated = !!(w._romanAlternates && w._romanAlternates.length);
       const romanizations = deriveExpectedRomans(w, w._romanAlternates);
       delete w._romanAlternates;
       const units = ReadingAnalysis.getReadingUnits(w);
       const built = units.length ? ReadingAnalysis.buildRomanFromUnits(units) : '';
-      const primary = (built && romanizations.includes(built))
-        ? built
-        : (romanizations[0] || built || '');
+      // Curated list order wins when the author set romanAlternates; otherwise prefer unit-built.
+      const primary = hadCurated
+        ? (romanizations[0] || built || '')
+        : (built && romanizations.includes(built))
+          ? built
+          : (romanizations[0] || built || '');
       const romanizationsOut = primary
         ? [primary, ...romanizations.filter(r => r !== primary)]
         : romanizations;

@@ -1,7 +1,7 @@
 # Thai Reading Quest — Transliteration Audit Findings
 
 Source: `docs/transliteration-audit.txt` (147 words).  
-**Status (2026-07-22 fix pass):** the **13 critical** items below were patched in WORD_SPECS / reading-analysis / word-spec (curated alternates are authoritative; multi-part words got `readingUnits`; garbage forms rejected by unit tests). Re-run `npm run export:translit` and re-audit for residual medium issues.
+**Status (2026-07-22):** **Critical** and **medium** leftovers closed in a second fix pass (units for อ/์/เ-อ, learner alternates, curated primary order, stale id renames + localStorage migration). Re-export with `npm run export:translit` before any new audit.
 
 Style assumed: app RTGS-ish learner spellings (`aa`/`ii`/`uu`, `kh`/`ph`/`th`, `bp`/`dt`, final `ร`/`ล`→`n`, `บ`/`ป`→`p`, `ด`/`ต`→`t`, leading `ห` silent before sonorants, curated `k`/`g` etc.).
 

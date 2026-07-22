@@ -195,15 +195,15 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   console.assert(a1c.introduces.vowels.includes('ั'), 'advanced-1c teaches ั');
   console.assert(a1c.introduces.rules.includes('leading-h'), 'advanced-1c teaches leading-h');
 
-  const faa = WORDS.find(w => w.id === 'faa');
+  const fan = WORDS.find(w => w.id === 'fan');
   const fuu = WORDS.find(w => w.id === 'fuu');
   const muu = WORDS.find(w => w.id === 'muu');
   const sawasdee = WORDS.find(w => w.id === 'sawasdee');
-  console.assert(faa.lessonId === 'advanced-1c', 'ฟัน lives in advanced-1c');
+  console.assert(fan.lessonId === 'advanced-1c', 'ฟัน lives in advanced-1c');
   console.assert(muu.lessonId === 'advanced-1c', 'หมู lives in advanced-1c');
-  console.assert(faa.thai === 'ฟัน' && faa.vowels.includes('ั'), 'ฟัน tagged with ั');
-  console.assert(!faa.rules.includes('implicit-o'), 'ฟัน is not implicit-o');
-  console.assert(wordNeedsMaiHanAkat(faa), 'ฟัน needs mai han-akat');
+  console.assert(fan.thai === 'ฟัน' && fan.vowels.includes('ั'), 'ฟัน tagged with ั');
+  console.assert(!fan.rules.includes('implicit-o'), 'ฟัน is not implicit-o');
+  console.assert(wordNeedsMaiHanAkat(fan), 'ฟัน needs mai han-akat');
   console.assert(wordNeedsMaiHanAkat(sawasdee), 'สวัสดี needs mai han-akat');
   console.assert(wordNeedsLeadingH(muu), 'หมู needs leading-h');
 
@@ -211,13 +211,13 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   seedCompletedBefore('advanced-1');
   const duringA1 = buildTestKnown(a1);
   console.assert(wordIsKnown(fuu, duringA1), 'ฟู allowed in advanced-1');
-  console.assert(!wordIsKnown(faa, duringA1), 'ฟัน blocked during advanced-1');
+  console.assert(!wordIsKnown(fan, duringA1), 'ฟัน blocked during advanced-1');
   console.assert(!wordIsKnown(muu, duringA1), 'หมู blocked during advanced-1');
 
   // During advanced-1b: still no ั / leading-h
   seedCompletedBefore('advanced-1b');
   const duringA1b = buildTestKnown(a1b);
-  console.assert(!wordIsKnown(faa, duringA1b), 'ฟัน blocked during advanced-1b');
+  console.assert(!wordIsKnown(fan, duringA1b), 'ฟัน blocked during advanced-1b');
   console.assert(!wordIsKnown(muu, duringA1b), 'หมู blocked during advanced-1b');
   for (const id of a1b.practiceWordIds) {
     const w = WORDS.find(x => x.id === id);
@@ -228,8 +228,8 @@ console.assert(noEmoji.length === 0, 'all words have emoji');
   seedCompletedBefore('advanced-1c');
   const beforeA1c = getKnownBefore(a1c);
   const duringA1c = buildTestKnown(a1c);
-  console.assert(!wordIsKnown(faa, beforeA1c), 'ฟัน blocked before advanced-1c');
-  console.assert(wordIsKnown(faa, duringA1c), 'ฟัน allowed once ั taught');
+  console.assert(!wordIsKnown(fan, beforeA1c), 'ฟัน blocked before advanced-1c');
+  console.assert(wordIsKnown(fan, duringA1c), 'ฟัน allowed once ั taught');
   console.assert(wordIsKnown(muu, duringA1c), 'หมู allowed once leading-h taught');
   for (const id of a1c.practiceWordIds) {
     const w = WORDS.find(x => x.id === id);

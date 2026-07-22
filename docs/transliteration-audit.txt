@@ -1,5 +1,5 @@
 Thai Reading Quest — transliteration audit dump
-Generated: 2026-07-22T17:37:51.951Z
+Generated: 2026-07-22T17:47:53.906Z
 Word count: 147
 
 Format per word:
@@ -277,7 +277,7 @@ Units: consonant:ง=ng · vowel:า=aa
 Meaning: sesame
 Rules: open-syllable
 
-bii | medium-1 | medium
+baan_open | medium-1 | medium
 Thai: บาน
 Accepted: baan
 RuleRoman: baan
@@ -297,8 +297,8 @@ Rules: final-consonant
 
 gin | medium-1 | medium
 Thai: กิน
-Accepted: kin, gin
-RuleRoman: kin
+Accepted: gin, kin
+RuleRoman: gin
 SpecAlternates: gin, kin
 Units: consonant:ก=k · vowel:ิ=i · consonant:น:final=n
 Meaning: eat
@@ -324,8 +324,8 @@ Rules: open-syllable
 
 kon | medium-1 | medium
 Thai: โกน
-Accepted: kon, koon, gon
-RuleRoman: kon
+Accepted: koon, kon, gon, goon
+RuleRoman: koon
 SpecAlternates: koon, kon, gon
 Units: consonant:ก=k · vowel:โ-=o · consonant:น:final=n
 Meaning: to shave
@@ -340,7 +340,7 @@ Units: consonant:ม=m · vowel:า=aa · consonant:ก:final=k
 Meaning: very / much
 Rules: final-consonant
 
-me | medium-1 | medium
+men | medium-1 | medium
 Thai: เมน
 Accepted: men
 RuleRoman: men
@@ -376,15 +376,6 @@ Units: consonant:ต=dt · vowel:า=aa · consonant:ก:final=k
 Meaning: dry in the sun
 Rules: final-consonant
 
-jaa | medium-2 | medium
-Thai: จาน
-Accepted: jaan
-RuleRoman: jaan
-SpecAlternates: jaan
-Units: consonant:จ=j · vowel:า=aa · consonant:น:final=n
-Meaning: plate / dish
-Rules: final-consonant
-
 jaak | medium-2 | medium
 Thai: จาก
 Accepted: jaak
@@ -392,6 +383,15 @@ RuleRoman: jaak
 SpecAlternates: jaak
 Units: consonant:จ=j · vowel:า=aa · consonant:ก:final=k
 Meaning: from
+Rules: final-consonant
+
+jaan | medium-2 | medium
+Thai: จาน
+Accepted: jaan
+RuleRoman: jaan
+SpecAlternates: jaan
+Units: consonant:จ=j · vowel:า=aa · consonant:น:final=n
+Meaning: plate / dish
 Rules: final-consonant
 
 phaan | medium-2 | medium
@@ -466,7 +466,7 @@ Units: consonant:ด=d · vowel:ู=uu
 Meaning: look / watch
 Rules: open-syllable
 
-ngii | medium-3 | medium
+nguu | medium-3 | medium
 Thai: งู
 Accepted: nguu
 RuleRoman: nguu
@@ -525,7 +525,7 @@ Thai: เจอ
 Accepted: joe, jeu, jer, je
 RuleRoman: joe
 SpecAlternates: joe, jeu, jer, je
-Units: cluster:จ+อ=j · rule:compound-oe=oe
+Units: consonant:จ=j · rule:compound-oe=oe
 Meaning: meet / find
 Rules: vowel-before, vowel-carrier, compound-oe
 
@@ -543,7 +543,7 @@ Thai: เรอ
 Accepted: roe, reu, re, rer
 RuleRoman: roe
 SpecAlternates: roe, reu, re, rer
-Units: cluster:ร+อ=r · rule:compound-oe=oe
+Units: consonant:ร=r · rule:compound-oe=oe
 Meaning: belch / burp
 Rules: vowel-before, vowel-carrier, compound-oe
 
@@ -558,8 +558,8 @@ Rules: vowel-before, final-consonant
 
 gae | medium-5 | medium
 Thai: แก
-Accepted: kae, gae
-RuleRoman: kae
+Accepted: gae, kae
+RuleRoman: gae
 SpecAlternates: gae, kae
 Units: consonant:ก=k · vowel:แ-=ae
 Meaning: you (informal)
@@ -592,7 +592,7 @@ Units: consonant:พ=ph · vowel:แ-=ae
 Meaning: raft
 Rules: vowel-before
 
-nu | medium-6 | medium
+lung | medium-6 | medium
 Thai: ลุง
 Accepted: lung
 RuleRoman: lung
@@ -601,7 +601,7 @@ Units: consonant:ล=l · vowel:ุ=u · consonant:ง:final=ng
 Meaning: uncle (older brother of a parent)
 Rules: final-consonant
 
-pu | medium-6 | medium
+mum | medium-6 | medium
 Thai: มุม
 Accepted: mum
 RuleRoman: mum
@@ -639,8 +639,8 @@ Rules: vowel-before
 
 gai | medium-7 | medium
 Thai: ไก
-Accepted: kai, gai
-RuleRoman: kai
+Accepted: gai, kai
+RuleRoman: gai
 SpecAlternates: gai, kai
 Units: consonant:ก=k · vowel:ไ-=ai
 Meaning: gai (clip of ไก่ chicken)
@@ -682,7 +682,7 @@ Units: consonant:ม=m · vowel:เ-า=ao
 Meaning: drunk
 Rules: vowel-before
 
-nge | medium-8 | medium
+ngao | medium-8 | medium
 Thai: เงา
 Accepted: ngao
 RuleRoman: ngao
@@ -747,8 +747,8 @@ Rules: final-consonant, final-sound-map
 
 we | medium-9 | medium
 Thai: เวร
-Accepted: wen, ween
-RuleRoman: wen
+Accepted: ween, wen
+RuleRoman: ween
 SpecAlternates: ween, wen
 Units: consonant:ว=w · vowel:เ-=e · consonant:ร:final=n
 Meaning: duty shift / karma
@@ -786,9 +786,9 @@ Thai: มอง
 Accepted: mong
 RuleRoman: mong
 SpecAlternates: mong
-Units: consonant:ม=m · rule:implicit-o=o · consonant:ง:final=ng
+Units: consonant:ม=m · vowel:อ=o · consonant:ง:final=ng
 Meaning: look / watch
-Rules: final-consonant, implicit-o
+Rules: final-consonant, vowel-carrier
 
 nom | medium-10 | medium
 Thai: นม
@@ -916,7 +916,7 @@ Units: consonant:ถ=th · vowel:ุ=u · consonant:ง:final=ng
 Meaning: bag
 Rules: final-consonant
 
-faa | advanced-1c | advanced
+fan | advanced-1c | advanced
 Thai: ฟัน
 Accepted: fan
 RuleRoman: fan
@@ -963,9 +963,9 @@ Rules: open-syllable, leading-h
 
 ahaan | advanced-2 | advanced
 Thai: อาหาร
-Accepted: aahaan, ahaan
+Accepted: aahaan, ahaan, ahan, aharn
 RuleRoman: aahaan
-SpecAlternates: aa-haan, ahaan, aahaan
+SpecAlternates: aa-haan, ahaan, aahaan, ahan, aharn
 Units: vowel:า=aa · consonant:ห=h · vowel:า:2=aa · consonant:ร:final=n
 Meaning: food
 Rules: vowel-carrier, final-consonant, final-sound-map, multi-syllable
@@ -1035,9 +1035,9 @@ Rules: vowel-carrier, implicit-o
 
 khopkhun | advanced-2 | advanced
 Thai: ขอบคุณ
-Accepted: khopkhun
+Accepted: khopkhun, kobkhun, khobkhun
 RuleRoman: khopkhun
-SpecAlternates: khop-khun, khopkhun
+SpecAlternates: khop-khun, khopkhun, kobkhun, khobkhun
 Units: consonant:ข=kh · rule:implicit-o=o · consonant:บ:final=p · consonant:ค=kh · vowel:ุ=u · consonant:น:final=n
 Meaning: thank you
 Rules: final-consonant, final-sound-map, multi-syllable, implicit-o, vowel-carrier
@@ -1083,9 +1083,9 @@ Thai: ร้อน
 Accepted: ron
 RuleRoman: ron
 SpecAlternates: ron
-Units: consonant:ร=r · vowel:โ-=o · consonant:น:final=n
+Units: consonant:ร=r · vowel:อ=o · consonant:น:final=n
 Meaning: hot
-Rules: final-consonant, tone-mark, vowel-before
+Rules: final-consonant, tone-mark, vowel-carrier
 
 sawasdee | advanced-2 | advanced
 Thai: สวัสดี
@@ -1125,9 +1125,9 @@ Rules: vowel-before, final-consonant, tone-mark
 
 jo | advanced-3 | advanced
 Thai: โจ๊ก
-Accepted: jook, joke
+Accepted: jook
 RuleRoman: jook
-SpecAlternates: jook, joke
+SpecAlternates: jook
 Units: consonant:จ=j · vowel:โ-=o · consonant:ก:final=k
 Meaning: rice porridge / congee
 Rules: vowel-before, final-consonant, tone-mark
@@ -1152,8 +1152,8 @@ Rules: vowel-before, tone-mark
 
 ngo | advanced-3 | advanced
 Thai: โง่
-Accepted: ngo, ngoo
-RuleRoman: ngo
+Accepted: ngoo, ngo
+RuleRoman: ngoo
 SpecAlternates: ngoo, ngo
 Units: consonant:ง=ng · vowel:โ-=o
 Meaning: foolish
@@ -1209,7 +1209,7 @@ Thai: ฟิล์ม
 Accepted: fim, film
 RuleRoman: fim
 SpecAlternates: fim, film
-Units: consonant:ฟ=f · vowel:ิ=i · consonant:ม:final=m
+Units: consonant:ฟ=f · vowel:ิ=i · consonant:ม:final=m · rule:silent-mark=∅
 Meaning: film
 Rules: silent-mark, final-consonant
 
@@ -1218,7 +1218,7 @@ Thai: ไมล์
 Accepted: mai, mail
 RuleRoman: mai
 SpecAlternates: mai, mail
-Units: consonant:ม=m · vowel:ไ-=ai
+Units: consonant:ม=m · vowel:ไ-=ai · rule:silent-mark=∅
 Meaning: mile
 Rules: vowel-before, silent-mark
 
@@ -1233,8 +1233,8 @@ Rules: vowel-before, silent-mark
 
 awk | advanced-7 | advanced
 Thai: ออก
-Accepted: ok, awk
-RuleRoman: ok
+Accepted: awk, ok
+RuleRoman: awk
 SpecAlternates: awk, ok
 Units: consonant:อ=∅ · rule:implicit-o=o · consonant:ก:final=k
 Meaning: exit
@@ -1251,9 +1251,9 @@ Rules: open-syllable
 
 gaafae | advanced-7 | advanced
 Thai: กาแฟ
-Accepted: kaafae, gaafae
-RuleRoman: kaafae
-SpecAlternates: gaafae, kaafae
+Accepted: gaafae, kaafae, gafae, kaafe
+RuleRoman: gaafae
+SpecAlternates: gaafae, kaafae, gafae, kaafe
 Units: consonant:ก=k · vowel:า=aa · consonant:ฟ=f · vowel:แ-=ae
 Meaning: coffee
 Rules: vowel-before, multi-syllable
