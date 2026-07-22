@@ -105,7 +105,20 @@
         hint: RULE_SPOT_LABELS['compound-short-o'].hint,
       };
     }
-    if (set.has('เ-า')) {
+    // และ: แ-+ะ = one short ae (not “aea”)
+    if (set.has('แ-') && set.has('ะ')) {
+      return {
+        kind: 'vowel',
+        key: 'vowel:แ-ะ',
+        symbols: ['แ-', 'ะ'],
+        label: 'แ◌ะ = ae',
+        thai: 'แ◌ะ',
+        roman: 'ae',
+        hint: 'One fused vowel — not “aea”.',
+      };
+    }
+    // เ + า (with optional tone marks) = ao
+    if (set.has('เ-า') || (set.has('เ-') && set.has('า') && !set.has('ะ') && !set.has('ิ') && !set.has('เ-อ'))) {
       return { kind: 'vowel', key: 'vowel:เ-า', symbols: ['เ-า'], label: 'เ-า = ao', thai: 'เ◌า', roman: 'ao' };
     }
     if (set.has('-วย') || r.has('w-vowel-ua')) {
@@ -175,9 +188,38 @@
     // Multi-syllable words are not one cluster+vowel+final. Require explicit readingUnits.
     if (rules.has('multi-syllable')) return [];
 
-    const consonants = [...(word.consonants || [])];
+    let consonants = [...(word.consonants || [])];
     const vowels = [...(word.vowels || [])];
     const units = [];
+
+    // ำ already includes final m — drop phantom ม coda from onset/final parse.
+    if (vowels.includes('ำ') && consonants[consonants.length - 1] === 'ม') {
+      consonants = consonants.slice(0, -1);
+    }
+
+    // -วย: ว+ย are the vowel, not an onset cluster.
+    if (rules.has('w-vowel-ua') || vowels.includes('-วย')) {
+      const onset = consonants.filter(c => c !== 'ว' && c !== 'ย');
+      if (onset.length === 1) {
+        units.push({
+          kind: 'consonant',
+          key: 'consonant:' + onset[0],
+          symbol: onset[0],
+          label: onset[0] + ' = ' + consonantRoman(onset[0], 'initial', rules),
+          thai: onset[0],
+          roman: consonantRoman(onset[0], 'initial', rules),
+          role: 'initial',
+        });
+      }
+      const vowelUnit = detectVowelUnit(vowels, word.rules || []);
+      if (vowelUnit) units.push(vowelUnit);
+      return units;
+    }
+
+    // Silent ์ usually marks ล/ร as silent (ไมล์) — do not drop the real final coda (ฟิล์ม).
+    if (rules.has('silent-mark') && vowels.includes('์')) {
+      consonants = consonants.filter(c => c !== 'ล' && c !== 'ร');
+    }
 
     let finalSym = null;
     let initials = consonants;

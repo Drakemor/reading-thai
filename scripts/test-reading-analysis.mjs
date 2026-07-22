@@ -201,7 +201,7 @@ for (const w of singleSyllable) {
 const altCases = [
   ['gaa', 'kaa'], ['ke', 'ge'], ['ko', 'go'], ['khii', 'khip'], ['khii', 'khiip'],
   ['phe', 'pleun'], ['suay', 'suai'], ['re', 'roe'], ['re', 'reu'], ['je', 'joe'],
-  ['bpeert', 'pert'], ['bpit', 'pit'], ['ni', 'nil'], ['we', 'wen'],
+  ['bpeert', 'bpoet'], ['bpit', 'pit'], ['ni', 'nil'], ['we', 'wen'],
 ];
 for (const [id, typed] of altCases) {
   expectCase(id, typed, { correct: true });
@@ -415,8 +415,10 @@ expectCase('ni', 'nil', { correct: true, unitOk: { 'consonant:ล:final': true }
 expectCase('ni', 'nill', { correct: false, unitBad: ['consonant:ล:final'] });
 expectCase('we', 'ween', { correct: true, unitOk: { 'consonant:ร:final': true } });
 expectCase('we', 'weer', { correct: false, unitBad: ['consonant:ร:final'] });
-expectCase('bpeert', 'bpeert', { correct: true, unitOk: { 'consonant:ด:final': true } });
-expectCase('bpeert', 'bpeerd', { correct: false, unitBad: ['consonant:ด:final'] });
+expectCase('bpeert', 'bpoet', { correct: true, unitOk: { 'consonant:ด:final': true } });
+expectCase('bpeert', 'bpoed', { correct: false, unitBad: ['consonant:ด:final'] });
+expectCase('bpeert', 'bpet', { correct: false });
+expectCase('bpeert', 'bpeert', { correct: false });
 expectCase('bpit', 'bpit', { correct: true });
 expectCase('bpit', 'bpid', { correct: false, unitBad: ['consonant:ด:final'] });
 
@@ -473,9 +475,11 @@ expectCase('suay', 'say', {
 // ---------------------------------------------------------------------------
 
 expectCase('nge', 'ngao', { correct: true, unitOk: { 'vowel:เ-า': true } });
-expectCase('nge', 'ngaao', { correct: true });
+expectCase('nge', 'ngaao', { correct: false });
 expectCase('nge', 'ngae', { correct: false, unitBad: ['vowel:เ-า'] });
 expectCase('che', 'chao', { correct: true }); // tone stripped in normRoman path — เ-า composite
+expectCase('che', 'chaao', { correct: false });
+expectCase('che', 'cheaa', { correct: false });
 expectCase('me', 'men', { correct: true, unitOk: { 'vowel:เ-': true, 'consonant:น:final': true } });
 expectCase('me', 'man', {
   correct: false,
@@ -581,6 +585,36 @@ for (const id of ['ahaan', 'khopkhun', 'sawasdee', 'gaafae', 'thanon', 'roongrae
   assert(!(w.romanizations || []).includes('hraan'), `${id} romanizations must not include hraan`);
   assert(!(w.romanizations || []).includes('swsdaii'), `${id} romanizations must not include swsdaii`);
   assert(!(w.romanizations || []).includes('khbkhon'), `${id} romanizations must not include khbkhon`);
+}
+
+// --- Audit fix-pass: reject garbage, accept correct ---
+
+const auditReject = [
+  ['ma', 'mnaaa'], ['na', 'naa'], ['ki', 'klio'], ['lae', 'laea'], ['naam', 'namm'],
+  ['che', 'cheaa'], ['che', 'chaao'], ['suay', 'swyuay'], ['mai', 'mlai'],
+  ['silent_ex', 'thmoe'], ['khao2', 'khe'], ['ne', 'nye'], ['thiang', 'thyeiing'],
+  ['bpeert', 'bpet'], ['bpeert', 'pet'], ['bpeert', 'bpeert'], ['nge', 'ngaao'],
+];
+for (const [id, typed] of auditReject) {
+  expectCase(id, typed, { correct: false });
+}
+
+const auditAccept = [
+  ['ma', 'maana'], ['na', 'naanaa'], ['ki', 'kilo'], ['ki', 'kiloo'], ['lae', 'lae'],
+  ['naam', 'naam'], ['che', 'chao'], ['suay', 'suay'], ['suay', 'suai'],
+  ['mai', 'mai'], ['mai', 'mail'], ['silent_ex', 'term'], ['khao2', 'khao'],
+  ['ne', 'noei'], ['thiang', 'thiang'], ['bpeert', 'bpoet'], ['bpeert', 'poet'],
+  ['jing', 'jing'], ['nge', 'ngao'], ['sawasdee', 'sawatdii'], ['sawasdee', 'sawadee'],
+  ['awk', 'awk'], ['fim', 'fim'], ['phe', 'phloen'], ['ahaan', 'ahaan'],
+];
+for (const [id, typed] of auditAccept) {
+  expectCase(id, typed, { correct: true });
+}
+
+for (const id of ['ma', 'na', 'ki', 'lae', 'naam', 'che', 'suay', 'mai', 'silent_ex', 'khao2', 'ne', 'thiang', 'bpeert']) {
+  const w = word(id);
+  assert(!(w.romanizations || []).some(r => /^(mnaaa|klio|swyuay|mlai|thmoe|thyeiing|laea|namm|cheaa|khe|nye|bpet)$/.test(r)),
+    `${id} Accepted must not include garbage (${w.romanizations.join(',')})`);
 }
 
 console.log(`\nreading-analysis: ${passed} passed, ${failed} failed`);

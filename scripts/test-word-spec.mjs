@@ -45,19 +45,25 @@ for (const spec of WORD_SPECS) {
     assert(word.thai === assembled, `${spec.id} assembled thai ${assembled} got ${word.thai}`);
   }
 
-  // Rule roman is primary expected answer
-  const ruleRoman = ReadingAnalysis.buildRomanFromUnits(ReadingAnalysis.getReadingUnits(word));
-  assert(word.ruleRoman === ruleRoman, `${spec.id} ruleRoman cached`);
+  // Primary Accepted form is ruleRoman (curated alternates win over broken unit mashups).
+  assert(word.ruleRoman, `${spec.id} has ruleRoman`);
   assert(
-    word.romanizations.includes(ruleRoman),
-    `${spec.id} romanizations include ruleRoman ${ruleRoman}: [${word.romanizations.join(', ')}]`
+    word.romanizations.includes(word.ruleRoman),
+    `${spec.id} romanizations include ruleRoman ${word.ruleRoman}: [${word.romanizations.join(', ')}]`
   );
+  if (spec.romanAlternates?.length) {
+    const curated = spec.romanAlternates.map(ReadingAnalysis.normRoman).filter(Boolean);
+    assert(
+      curated.includes(word.ruleRoman) || word.ruleRoman === ReadingAnalysis.buildRomanFromUnits(ReadingAnalysis.getReadingUnits(word)),
+      `${spec.id} ruleRoman ${word.ruleRoman} should match curated or unit-built`
+    );
+  }
 
   // Scoring uses rules: typing ruleRoman is correct
-  const analysis = ReadingAnalysis.analyzeReadingAnswer(word, ruleRoman);
-  assert(analysis.correct, `${spec.id} accepts ruleRoman "${ruleRoman}"`);
+  const analysis = ReadingAnalysis.analyzeReadingAnswer(word, word.ruleRoman);
+  assert(analysis.correct, `${spec.id} accepts ruleRoman "${word.ruleRoman}"`);
 
-  // Optional spelling alternates (primary answer always comes from rules)
+  // Optional spelling alternates
   if (spec.romanAlternates?.length) {
     for (const leg of spec.romanAlternates) {
       const norm = ReadingAnalysis.normRoman(leg);

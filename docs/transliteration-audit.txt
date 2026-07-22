@@ -1,5 +1,5 @@
 Thai Reading Quest — transliteration audit dump
-Generated: 2026-07-22T17:25:52.748Z
+Generated: 2026-07-22T17:37:51.951Z
 Word count: 147
 
 Format per word:
@@ -54,19 +54,19 @@ Rules: open-syllable
 
 ma | basic-3 | basic
 Thai: มานะ
-Accepted: mnaaa, maana
-RuleRoman: mnaaa
-SpecAlternates: maa-na, maana
-Units: cluster:ม+น=mn · vowel:า+ะ=aaa
+Accepted: maana
+RuleRoman: maana
+SpecAlternates: maana, maa-na
+Units: consonant:ม=m · vowel:า=aa · consonant:น=n · vowel:ะ=a
 Meaning: perseverance / determination
 Rules: open-syllable
 
 na | basic-3 | basic
 Thai: นานา
-Accepted: naa, naanaa
-RuleRoman: naa
-SpecAlternates: naa-naa, naanaa
-Units: consonant:น=n · vowel:า=aa
+Accepted: naanaa
+RuleRoman: naanaa
+SpecAlternates: naanaa, naa-naa
+Units: consonant:น=n · vowel:า=aa · consonant:น:2=n · vowel:า:2=aa
 Meaning: various / diverse
 Rules: open-syllable
 
@@ -225,10 +225,10 @@ Rules: open-syllable
 
 ki | basic-9 | basic
 Thai: กิโล
-Accepted: klio, kiloo, kilo, gilo
-RuleRoman: klio
-SpecAlternates: ki-loo, kilo, gilo
-Units: cluster:ก+ล=kl · vowel:ิ+โ-=io
+Accepted: kiloo, kilo, gilo, giloo
+RuleRoman: kiloo
+SpecAlternates: kiloo, kilo, gilo, ki-loo
+Units: consonant:ก=k · vowel:ิ=i · consonant:ล=l · vowel:โ-=oo
 Meaning: kilo
 Rules: vowel-before, open-syllable
 
@@ -540,9 +540,9 @@ Rules: vowel-before, vowel-carrier
 
 re | medium-4 | medium
 Thai: เรอ
-Accepted: roe, reu, re
+Accepted: roe, reu, re, rer
 RuleRoman: roe
-SpecAlternates: roe, reu, re
+SpecAlternates: roe, reu, re, rer
 Units: cluster:ร+อ=r · rule:compound-oe=oe
 Meaning: belch / burp
 Rules: vowel-before, vowel-carrier, compound-oe
@@ -567,10 +567,10 @@ Rules: vowel-before
 
 lae | medium-5 | medium
 Thai: และ
-Accepted: laea, lae
-RuleRoman: laea
+Accepted: lae
+RuleRoman: lae
 SpecAlternates: lae
-Units: consonant:ล=l · vowel:แ-+ะ=aea
+Units: consonant:ล=l · vowel:แ-ะ=ae
 Meaning: and
 Rules: vowel-before, open-syllable
 
@@ -684,9 +684,9 @@ Rules: vowel-before
 
 nge | medium-8 | medium
 Thai: เงา
-Accepted: ngao, ngaao
+Accepted: ngao
 RuleRoman: ngao
-SpecAlternates: ngaao, ngao
+SpecAlternates: ngao
 Units: consonant:ง=ng · vowel:เ-า=ao
 Meaning: shadow
 Rules: vowel-before
@@ -702,10 +702,10 @@ Rules: vowel-before
 
 bpeert | medium-9 | advanced
 Thai: เปิด
-Accepted: bpet, bpeert, pert, peert, pet
-RuleRoman: bpet
-SpecAlternates: bpeert, pert, peert
-Units: consonant:ป=bp · vowel:เ-=e · consonant:ด:final=t
+Accepted: bpoet, poet, bpert, pert
+RuleRoman: bpoet
+SpecAlternates: bpoet, poet, bpert, pert
+Units: consonant:ป=bp · rule:compound-oe-i=oe · consonant:ด:final=t
 Meaning: open
 Rules: vowel-before, final-consonant, final-sound-map
 
@@ -981,19 +981,19 @@ Rules: final-consonant, tone-mark
 
 che | advanced-2 | advanced
 Thai: เช้า
-Accepted: cheaa, chaao, chao
-RuleRoman: cheaa
-SpecAlternates: chaao, chao
-Units: consonant:ช=ch · vowel:เ-+า=eaa
+Accepted: chao
+RuleRoman: chao
+SpecAlternates: chao
+Units: consonant:ช=ch · vowel:เ-า=ao
 Meaning: morning
 Rules: vowel-before, tone-mark
 
 jing | advanced-2 | advanced
 Thai: จริง
-Accepted: jring, jing
-RuleRoman: jring
-SpecAlternates: jing
-Units: cluster:จ+ร=jr · vowel:ิ=i · consonant:ง:final=ng
+Accepted: jing, jring
+RuleRoman: jing
+SpecAlternates: jing, jring
+Units: consonant:จ=j · vowel:ิ=i · consonant:ง:final=ng
 Meaning: true / really
 Rules: final-consonant
 
@@ -1008,8 +1008,8 @@ Rules: tone-mark
 
 khaao | advanced-2 | advanced
 Thai: ข้าว
-Accepted: khaaw, khaao
-RuleRoman: khaaw
+Accepted: khaao
+RuleRoman: khaao
 SpecAlternates: khaao
 Units: consonant:ข=kh · vowel:า=aa · consonant:ว:final=w
 Meaning: rice
@@ -1053,12 +1053,12 @@ Rules: final-consonant
 
 naam | advanced-2 | advanced
 Thai: น้ำ
-Accepted: namm, naam
-RuleRoman: namm
-SpecAlternates: naam
-Units: consonant:น=n · vowel:ำ=am · consonant:ม:final=m
+Accepted: naam, nam
+RuleRoman: naam
+SpecAlternates: naam, nam
+Units: consonant:น=n · vowel:ำ=aam
 Meaning: water
-Rules: final-consonant, tone-mark, special-vowel
+Rules: tone-mark, special-vowel
 
 nii | advanced-2 | advanced
 Thai: นี้
@@ -1089,9 +1089,9 @@ Rules: final-consonant, tone-mark, vowel-before
 
 sawasdee | advanced-2 | advanced
 Thai: สวัสดี
-Accepted: sawatdii, sawasdee
+Accepted: sawatdii, sawasdee, sawadee, sawatdee
 RuleRoman: sawatdii
-SpecAlternates: sa-wat-dii, sawasdee, sawatdii
+SpecAlternates: sa-wat-dii, sawasdee, sawatdii, sawadee, sawatdee
 Units: consonant:ส=s · vowel:a-open=a · consonant:ว=w · vowel:ั=a · consonant:ส:final=t · consonant:ด=d · vowel:ี=ii
 Meaning: hello
 Rules: multi-syllable, final-consonant, final-sound-map
@@ -1107,10 +1107,10 @@ Rules: final-consonant, tone-mark, implicit-o
 
 suay | advanced-2 | advanced
 Thai: สวย
-Accepted: swyuay, suay, suai
-RuleRoman: swyuay
+Accepted: suay, suai
+RuleRoman: suay
 SpecAlternates: suay, suai
-Units: cluster:ส+ว+ย=swy · rule:w-vowel-ua=uay
+Units: consonant:ส=s · rule:w-vowel-ua=uay
 Meaning: beautiful
 Rules: w-vowel-ua
 
@@ -1125,8 +1125,8 @@ Rules: vowel-before, final-consonant, tone-mark
 
 jo | advanced-3 | advanced
 Thai: โจ๊ก
-Accepted: jok, jook, joke
-RuleRoman: jok
+Accepted: jook, joke
+RuleRoman: jook
 SpecAlternates: jook, joke
 Units: consonant:จ=j · vowel:โ-=o · consonant:ก:final=k
 Meaning: rice porridge / congee
@@ -1179,8 +1179,8 @@ Rules: tone-mark
 
 card_high | advanced-4 | advanced
 Thai: ส
-Accepted: s, high
-RuleRoman: s
+Accepted: high
+RuleRoman: high
 SpecAlternates: high
 Units: consonant:ส=s
 Meaning: high-class consonant (ส)
@@ -1188,8 +1188,8 @@ Rules: consonant-class
 
 card_low | advanced-4 | advanced
 Thai: ค
-Accepted: kh, low
-RuleRoman: kh
+Accepted: low
+RuleRoman: low
 SpecAlternates: low
 Units: consonant:ค=kh
 Meaning: low-class consonant (ค)
@@ -1197,8 +1197,8 @@ Rules: consonant-class
 
 card_mid | advanced-4 | advanced
 Thai: ก
-Accepted: k, mid, g
-RuleRoman: k
+Accepted: mid
+RuleRoman: mid
 SpecAlternates: mid
 Units: consonant:ก=k
 Meaning: mid-class consonant (ก)
@@ -1215,21 +1215,21 @@ Rules: silent-mark, final-consonant
 
 mai | advanced-6 | advanced
 Thai: ไมล์
-Accepted: mlai, mai, mail
-RuleRoman: mlai
+Accepted: mai, mail
+RuleRoman: mai
 SpecAlternates: mai, mail
-Units: cluster:ม+ล=ml · vowel:ไ-=ai
+Units: consonant:ม=m · vowel:ไ-=ai
 Meaning: mile
 Rules: vowel-before, silent-mark
 
 silent_ex | advanced-6 | advanced
 Thai: เธอร์ม
-Accepted: thmoe, term
-RuleRoman: thmoe
-SpecAlternates: term
-Units: cluster:ท+อ+ม=thm · rule:compound-oe=oe
+Accepted: term, therm
+RuleRoman: term
+SpecAlternates: term, therm
+Units: consonant:ท=t · vowel:เ-=e · consonant:ร=r · consonant:ม:final=m
 Meaning: therm- (loan root; silent ์)
-Rules: vowel-before, vowel-carrier, compound-oe, silent-mark
+Rules: vowel-before, silent-mark
 
 awk | advanced-7 | advanced
 Thai: ออก
@@ -1260,12 +1260,12 @@ Rules: vowel-before, multi-syllable
 
 khao2 | advanced-7 | advanced
 Thai: เข้า
-Accepted: khe, khao
-RuleRoman: khe
+Accepted: khao
+RuleRoman: khao
 SpecAlternates: khao
-Units: cluster:ข+อ=kh · vowel:เ-=e
+Units: consonant:ข=kh · vowel:เ-า=ao
 Meaning: enter
-Rules: vowel-before, vowel-carrier, tone-mark
+Rules: vowel-before, tone-mark
 
 maew | advanced-7 | advanced
 Thai: แมว
@@ -1287,10 +1287,10 @@ Rules: final-consonant, multi-syllable, vowel-before
 
 ne | advanced-7 | advanced
 Thai: เนย
-Accepted: nye, noei, neoy, ney
-RuleRoman: nye
-SpecAlternates: noei, neoy, ney
-Units: cluster:น+ย=ny · vowel:เ-=e
+Accepted: noei, neoy, ney, noey
+RuleRoman: noei
+SpecAlternates: noei, neoy, ney, noey
+Units: consonant:น=n · vowel:เ-ย=oei
 Meaning: butter
 Rules: vowel-before
 
@@ -1332,9 +1332,9 @@ Rules: final-consonant, implicit-o, multi-syllable
 
 thiang | advanced-7 | advanced
 Thai: เที่ยง
-Accepted: thyeiing, thiang
-RuleRoman: thyeiing
+Accepted: thiang
+RuleRoman: thiang
 SpecAlternates: thiang
-Units: cluster:ท+ย=thy · vowel:เ-+ี=eii · consonant:ง:final=ng
+Units: consonant:ท=th · vowel:เ-ีย=ia · consonant:ง:final=ng
 Meaning: noon
 Rules: vowel-before, final-consonant
