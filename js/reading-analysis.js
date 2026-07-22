@@ -171,6 +171,10 @@
   function autoReadingUnits(word) {
     if (!word) return [];
     const rules = new Set(word.rules || []);
+
+    // Multi-syllable words are not one cluster+vowel+final. Require explicit readingUnits.
+    if (rules.has('multi-syllable')) return [];
+
     const consonants = [...(word.consonants || [])];
     const vowels = [...(word.vowels || [])];
     const units = [];
@@ -306,8 +310,88 @@
     return [...new Set([primary, ...alts])];
   }
 
+  /** True when units are a single open/closed syllable (suffix-prefix scoring works). */
+  function isSimpleSyllableUnits(units) {
+    const spoken = (units || []).filter(u => u.roman);
+    const initials = spoken.filter(u => u.kind === 'cluster' || (u.kind === 'consonant' && u.role !== 'final'));
+    const vowels = spoken.filter(u => u.kind === 'vowel' || (u.kind === 'rule' && u.roman));
+    const finals = spoken.filter(u => u.role === 'final');
+    return initials.length <= 1 && vowels.length <= 1 && finals.length <= 1
+      && spoken.length === initials.length + vowels.length + finals.length;
+  }
+
+  /**
+   * Left-to-right unit match for multi-syllable / interleaved patterns.
+   * (Suffix-first scoring invents nonsense when vowels and consonants alternate.)
+   */
+  function scoreUnitsSequential(units, typedRoman) {
+    const rules = new Set();
+    const scored = units.map(u => ({ ...u }));
+    let tRem = typedRoman;
+
+    for (const unit of scored) {
+      if (unit.rule === 'leading-h') {
+        const spuriousH = /^h/.test(typedRoman);
+        unit.ok = !spuriousH;
+        unit.expected = '(silent)';
+        unit.got = spuriousH
+          ? (typedRoman.match(/^h[a-z]*?(?=[aeiouy]|$)/)?.[0] || 'h')
+          : '(none)';
+        if (spuriousH && tRem.startsWith('h')) tRem = tRem.slice(1);
+        continue;
+      }
+
+      if (!unit.roman) {
+        unit.ok = true;
+        unit.expected = '—';
+        unit.got = '—';
+        continue;
+      }
+
+      const exp = unit.roman;
+      let alts = [exp];
+      if (unit.kind === 'consonant' && unit.symbol) {
+        alts = consonantAlternatives(unit.symbol, unit.role || 'initial', rules);
+        if (unit.role === 'final' && FINAL_SOUND_MAP[unit.symbol]) {
+          // Accept mapped final sound as primary, keep letter-name as diagnostic alternate only for matching typos.
+          alts = [...new Set([exp, FINAL_SOUND_MAP[unit.symbol], ...alts])];
+        }
+      }
+
+      const matched = alts.find(a => a && tRem.startsWith(a));
+      if (matched) {
+        // Final-sound-map: letter-name match (e.g. "r" for ร) is still wrong if mapped sound is required.
+        if (unit.role === 'final' && FINAL_SOUND_MAP[unit.symbol] && matched !== exp
+            && matched === consonantRoman(unit.symbol, 'initial', new Set())) {
+          unit.ok = false;
+          unit.expected = exp;
+          unit.got = matched;
+          tRem = tRem.slice(matched.length);
+          continue;
+        }
+        unit.ok = true;
+        unit.expected = exp;
+        unit.got = matched;
+        tRem = tRem.slice(matched.length);
+        continue;
+      }
+
+      unit.ok = false;
+      unit.expected = exp;
+      unit.got = tRem.slice(0, Math.max(exp.length, 1)) || tRem || '—';
+      if (tRem.length >= exp.length) tRem = tRem.slice(exp.length);
+      else tRem = '';
+    }
+
+    return scored;
+  }
+
   /** Match units using suffix (vowel/final) then prefix (consonant) — not blind char positions. */
   function scoreUnits(units, expectedRoman, typedRoman) {
+    if (!isSimpleSyllableUnits(units)) {
+      return scoreUnitsSequential(units, typedRoman);
+    }
+
     const rules = new Set();
     const scored = units.map(u => ({ ...u }));
 
@@ -432,12 +516,13 @@
     };
   }
 
-  /** Expected answers from reading rules (primary) plus any compiled alternates. */
+  /** Expected answers: curated romanizations first, then rule-built (never alone for empty units). */
   function getExpectedRomans(word) {
-    const built = buildRomanFromUnits(getReadingUnits(word));
     const fromWord = (word?.romanizations || []).map(normRoman).filter(Boolean);
-    const rulePrimary = normRoman(word?.ruleRoman || built);
-    return [...new Set([rulePrimary, built, ...fromWord].filter(Boolean))];
+    const units = getReadingUnits(word);
+    const built = units.length ? normRoman(buildRomanFromUnits(units)) : '';
+    const rulePrimary = units.length ? normRoman(word?.ruleRoman || built) : '';
+    return [...new Set([...fromWord, rulePrimary, built].filter(Boolean))];
   }
 
   function analyzeReadingAnswer(word, typed) {
@@ -456,12 +541,17 @@
       };
     }
 
-    const built = buildRomanFromUnits(units);
-    const rulePrimary = normRoman(word?.ruleRoman || built);
-    const candidates = [...new Set([rulePrimary, built, ...expectedNorms].filter(Boolean))];
-    const bestExpected = pickClosestExpected(candidates, typedNorm);
-    const scored = scoreUnits(units, bestExpected, typedNorm);
-    const summary = buildMistakeSummary(scored);
+    const bestExpected = pickClosestExpected(expectedNorms, typedNorm);
+    const scored = units.length ? scoreUnits(units, bestExpected, typedNorm) : [];
+    const summary = scored.length
+      ? buildMistakeSummary(scored)
+      : {
+          wrongLines: [{ kind: 'word', text: `Expected “${bestExpected || expectedNorms[0] || '—'}”, you wrote “${typedNorm || '—'}”` }],
+          wrongParts: [],
+          rightParts: [],
+          headline: `Expected “${bestExpected || expectedNorms[0] || '—'}”, you wrote “${typedNorm || '—'}”`,
+          rightNote: '',
+        };
 
     const wrongKeys = [];
     scored.forEach(u => {

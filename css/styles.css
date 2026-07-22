@@ -648,7 +648,7 @@ html:-webkit-full-screen .app-shell{
   width:min(100%, var(--stage-max));
   margin-inline:auto;
   min-height:0;
-  overflow-x:visible;
+  overflow-x:hidden;
   overflow-y:auto;
   -webkit-overflow-scrolling:touch;
 }
@@ -838,9 +838,13 @@ html:-webkit-full-screen .app-shell{
 /* 3D playing-card flip for lesson word reveals */
 .flip-scene{
   perspective:1400px;
+  perspective-origin:50% 50%;
   width:min(100%, 42rem);
   margin:0 auto;
   min-height:min(58vh, 28rem);
+  /* Clip mid-flip projection so ancestors don't grow a scrollbar and jitter. */
+  overflow:hidden;
+  isolation:isolate;
 }
 .flip-card{
   position:relative;
@@ -848,6 +852,7 @@ html:-webkit-full-screen .app-shell{
   min-height:min(58vh, 28rem);
   transform-style:preserve-3d;
   transition:transform 0.7s var(--ease-snappy);
+  will-change:transform;
 }
 .flip-card.is-flipped{transform:rotateY(180deg)}
 .flip-face,

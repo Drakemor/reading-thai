@@ -541,5 +541,47 @@ expectCase('ngi', 'hngit', {
 // Report
 // ---------------------------------------------------------------------------
 
+// --- Multi-syllable: no fake clusters; aahaan feedback ---
+
+assert(
+  !getReadingUnits(word('ahaan')).some(u => u.kind === 'cluster'),
+  'ahaan must not invent อ+ห+ร cluster'
+);
+assert(
+  getReadingUnits(word('ahaan')).some(u => u.key === 'consonant:ร:final'),
+  'ahaan final is ร→n, not น'
+);
+expectCase('ahaan', 'aahaan', { correct: true });
+expectCase('ahaan', 'ahaan', { correct: true });
+expectCase('ahaan', 'aahaar', {
+  correct: false,
+  unitOk: { 'vowel:า': true, 'consonant:ห': true, 'vowel:า:2': true },
+  unitBad: ['consonant:ร:final'],
+});
+{
+  const a = analyzeReadingAnswer(word('ahaan'), 'aahaar');
+  assert(!a.expected.includes('hr'), `ahaan expected must not be garbage cluster (${a.expected})`);
+  assert(!a.summary?.headline?.includes('Cluster'), `ahaan headline must not invent cluster: ${a.summary?.headline}`);
+  assert(a.units.some(u => u.key === 'consonant:ร:final' && !u.ok && u.expected === 'n'), 'aahaar flags final ร→n');
+}
+
+expectCase('khopkhun', 'khopkhun', { correct: true });
+expectCase('sawasdee', 'sawatdii', { correct: true });
+expectCase('sawasdee', 'sawasdee', { correct: true });
+expectCase('gaafae', 'gaafae', { correct: true });
+expectCase('thanon', 'thanon', { correct: true });
+expectCase('roongraem', 'roongraem', { correct: true });
+expectCase('nakrian', 'nakrian', { correct: true });
+expectCase('roongrian', 'roongrian', { correct: true });
+
+// Broken ruleRomans must never appear as expected answers
+for (const id of ['ahaan', 'khopkhun', 'sawasdee', 'gaafae', 'thanon', 'roongraem', 'nakrian', 'roongrian']) {
+  const w = word(id);
+  assert(!/^h?r+aan$/.test(w.ruleRoman || ''), `${id} ruleRoman not hraan-like (${w.ruleRoman})`);
+  assert(!(w.romanizations || []).includes('hraan'), `${id} romanizations must not include hraan`);
+  assert(!(w.romanizations || []).includes('swsdaii'), `${id} romanizations must not include swsdaii`);
+  assert(!(w.romanizations || []).includes('khbkhon'), `${id} romanizations must not include khbkhon`);
+}
+
 console.log(`\nreading-analysis: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);

@@ -167,26 +167,35 @@
       .filter(Boolean);
   }
 
-  /** Build expected romanizations purely from reading units + symbol alternates. */
+  /** Build expected romanizations: curated alternates first, then rule-built when units exist. */
   function deriveExpectedRomans(word, extraAlternates) {
-    if (!global.ReadingAnalysis) return [];
+    if (!global.ReadingAnalysis) {
+      return (extraAlternates || []).map(r => String(r || '').toLowerCase().replace(/[^a-z]/g, '')).filter(Boolean);
+    }
     const RA = ReadingAnalysis;
+    const alts = new Set();
+    (extraAlternates || []).forEach(r => {
+      const n = RA.normRoman(r);
+      if (n) alts.add(n);
+    });
+
     const units = RA.getReadingUnits(word);
-    const base = RA.buildRomanFromUnits(units);
-    const alts = new Set([base]);
+    if (units.length) {
+      const base = RA.buildRomanFromUnits(units);
+      if (base) alts.add(base);
 
-    const initialUnit = units.find(u => u.kind === 'consonant' && u.role !== 'final')
-      || units.find(u => u.kind === 'cluster');
+      const initialUnit = units.find(u => u.kind === 'consonant' && u.role !== 'final')
+        || units.find(u => u.kind === 'cluster');
 
-    if (initialUnit?.kind === 'consonant' && initialUnit.symbol) {
-      const primary = RA.normRoman(initialUnit.roman);
-      const tail = primary && base.startsWith(primary) ? base.slice(primary.length) : '';
-      symbolSoundAlts(initialUnit.symbol).forEach(a => {
-        if (a && a !== primary) alts.add(a + tail);
-      });
+      if (initialUnit?.kind === 'consonant' && initialUnit.symbol) {
+        const primary = RA.normRoman(initialUnit.roman);
+        const tail = primary && base.startsWith(primary) ? base.slice(primary.length) : '';
+        symbolSoundAlts(initialUnit.symbol).forEach(a => {
+          if (a && a !== primary) alts.add(a + tail);
+        });
+      }
     }
 
-    (extraAlternates || []).forEach(r => alts.add(RA.normRoman(r)));
     return [...alts].filter(Boolean);
   }
 
@@ -215,11 +224,23 @@
     return compiled.map(w => {
       const romanizations = deriveExpectedRomans(w, w._romanAlternates);
       delete w._romanAlternates;
-      const ruleRoman = ReadingAnalysis.buildRomanFromUnits(ReadingAnalysis.getReadingUnits(w));
+      const units = ReadingAnalysis.getReadingUnits(w);
+      const built = units.length ? ReadingAnalysis.buildRomanFromUnits(units) : '';
+      // Prefer curated / first alternate as ruleRoman when units can't build a reading.
+      const ruleRoman = built || romanizations[0] || '';
+      const ordered = [...new Set([
+        ...(romanizations.filter(r => r !== built)),
+        ...(built ? [built] : []),
+      ].filter(Boolean))];
+      // Put primary spoken form first: prefer built when we have units, else first alternate.
+      const primary = built || ordered[0];
+      const romanizationsOut = primary
+        ? [primary, ...ordered.filter(r => r !== primary)]
+        : ordered;
       return {
         ...w,
-        romanizations: romanizations.length ? romanizations : [ruleRoman].filter(Boolean),
-        ruleRoman,
+        romanizations: romanizationsOut,
+        ruleRoman: primary || ruleRoman,
       };
     });
   }
