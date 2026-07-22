@@ -558,6 +558,22 @@ body.has-typed-dock .test-compact{
 }
 .fb-strip-detail strong{color:#fff}
 
+.reading-feedback{
+  margin-top:0.45rem;
+  display:flex;
+  flex-direction:column;
+  gap:0.35rem;
+}
+.reading-mistake-headline{
+  font-size:0.82rem;
+  line-height:1.4;
+  color:#fecaca;
+  font-weight:600;
+}
+.reading-mistake-right{
+  font-size:0.78rem;
+  color:#6ee7b7;
+}
 .reading-breakdown{
   list-style:none;
   margin:0.45rem 0 0;
