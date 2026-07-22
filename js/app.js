@@ -1033,7 +1033,7 @@ function analyzeTypedAnswer(word, answer) {
 
 function renderReadingBreakdown(analysis) {
   if (!analysis?.units?.length || analysis.correct) return '';
-  const wrong = analysis.units.filter(u => !u.ok && u.roman);
+  const wrong = analysis.units.filter(u => !u.ok && (u.roman || u.rule === 'leading-h'));
   if (!wrong.length) return '';
 
   const summary = analysis.summary;
@@ -1052,6 +1052,7 @@ function renderReadingBreakdown(analysis) {
     else if (u.kind === 'cluster') kindLabel = 'Cluster';
     else if (u.role === 'final') kindLabel = 'Final';
     else if (u.kind === 'consonant') kindLabel = 'Consonant';
+    else if (u.rule === 'leading-h') kindLabel = 'Rule';
     return `<li class="reading-unit reading-unit-bad">
       <span class="reading-unit-icon" aria-hidden="true">✗</span>
       <span class="reading-unit-label">${escHtml(kindLabel)} · ${formatMixedThai(u.label || u.key, 'thai-glyph')}</span>

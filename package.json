@@ -9,7 +9,9 @@
     "smoke": "node scripts/smoke-survival.mjs && node scripts/smoke-viewport-actions.mjs && node scripts/smoke-mobile-layout.mjs",
     "smoke:logic": "node scripts/smoke-survival.mjs",
     "smoke:viewport": "node scripts/smoke-viewport-actions.mjs",
-    "smoke:mobile": "node scripts/smoke-mobile-layout.mjs"
+    "smoke:mobile": "node scripts/smoke-mobile-layout.mjs",
+    "test": "node scripts/test-reading-analysis.mjs",
+    "test:reading": "node scripts/test-reading-analysis.mjs"
   },
   "devDependencies": {
     "playwright": "^1.54.0",
