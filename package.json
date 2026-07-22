@@ -13,7 +13,8 @@
     "test": "node scripts/test-reading-analysis.mjs && node scripts/test-word-spec.mjs && node scripts/test-curriculum-order.mjs",
     "test:reading": "node scripts/test-reading-analysis.mjs",
     "test:words": "node scripts/test-word-spec.mjs",
-    "test:curriculum": "node scripts/test-curriculum-order.mjs"
+    "test:curriculum": "node scripts/test-curriculum-order.mjs",
+    "export:translit": "node scripts/export-transliterations.mjs"
   },
   "devDependencies": {
     "playwright": "^1.54.0",

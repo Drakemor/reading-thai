@@ -1,0 +1,1340 @@
+Thai Reading Quest — transliteration audit dump
+Generated: 2026-07-22T17:25:52.748Z
+Word count: 147
+
+Format per word:
+  id | lesson | level
+  Thai: <script>
+  Accepted: <comma-separated romanizations used for grading>
+  RuleRoman: <primary rule-built form>
+  SpecAlternates: <from WORD_SPECS.romanAlternates, if any>
+  Units: <reading unit key=roman ...>
+  Meaning: <english>
+  Rules: <tags>
+
+Review task: for each word, confirm Accepted transliterations match how the Thai should be read.
+Flag mistakes: wrong primary reading, missing common alternates that should pass, garbage forms, or units that invent false clusters.
+────────────────────────────────────────────────────────────────────────
+
+gaa | basic-1 | basic
+Thai: กา
+Accepted: kaa, gaa
+RuleRoman: kaa
+SpecAlternates: kaa, gaa
+Units: consonant:ก=k · vowel:า=aa
+Meaning: crow
+Rules: open-syllable
+
+maa | basic-1 | basic
+Thai: มา
+Accepted: maa
+RuleRoman: maa
+SpecAlternates: maa
+Units: consonant:ม=m · vowel:า=aa
+Meaning: come
+Rules: open-syllable
+
+naa | basic-2 | basic
+Thai: นา
+Accepted: naa
+RuleRoman: naa
+SpecAlternates: naa
+Units: consonant:น=n · vowel:า=aa
+Meaning: field / rice field
+Rules: open-syllable
+
+ka | basic-3 | basic
+Thai: กะ
+Accepted: ka, ga
+RuleRoman: ka
+SpecAlternates: ka, ga
+Units: consonant:ก=k · vowel:ะ=a
+Meaning: to estimate / a portion
+Rules: open-syllable
+
+ma | basic-3 | basic
+Thai: มานะ
+Accepted: mnaaa, maana
+RuleRoman: mnaaa
+SpecAlternates: maa-na, maana
+Units: cluster:ม+น=mn · vowel:า+ะ=aaa
+Meaning: perseverance / determination
+Rules: open-syllable
+
+na | basic-3 | basic
+Thai: นานา
+Accepted: naa, naanaa
+RuleRoman: naa
+SpecAlternates: naa-naa, naanaa
+Units: consonant:น=n · vowel:า=aa
+Meaning: various / diverse
+Rules: open-syllable
+
+mi | basic-4 | basic
+Thai: มิ
+Accepted: mi
+RuleRoman: mi
+SpecAlternates: mi
+Units: consonant:ม=m · vowel:ิ=i
+Meaning: not (formal)
+Rules: open-syllable
+
+mii | basic-4 | basic
+Thai: มี
+Accepted: mii
+RuleRoman: mii
+SpecAlternates: mii
+Units: consonant:ม=m · vowel:ี=ii
+Meaning: have / there is
+Rules: open-syllable
+
+ke | basic-5 | basic
+Thai: เกะ
+Accepted: ke, ge
+RuleRoman: ke
+SpecAlternates: ke, ge
+Units: consonant:ก=k · rule:compound-short-e=e
+Meaning: jutting / awkward (เกะกะ)
+Rules: vowel-before, open-syllable, compound-short-e
+
+baa | basic-6 | basic
+Thai: บา
+Accepted: baa
+RuleRoman: baa
+SpecAlternates: baa
+Units: consonant:บ=b · vowel:า=aa
+Meaning: wound / sore
+Rules: open-syllable
+
+be | basic-6 | basic
+Thai: เบะ
+Accepted: be
+RuleRoman: be
+SpecAlternates: be
+Units: consonant:บ=b · rule:compound-short-e=e
+Meaning: askew / leaning
+Rules: vowel-before, open-syllable, compound-short-e
+
+bpe | basic-6 | basic
+Thai: เปะ
+Accepted: bpe, pe
+RuleRoman: bpe
+SpecAlternates: bpe, pe
+Units: consonant:ป=bp · rule:compound-short-e=e
+Meaning: smack / splat (onomatopoeic)
+Rules: vowel-before, open-syllable, compound-short-e
+
+paa | basic-6 | basic
+Thai: ปา
+Accepted: bpaa, paa
+RuleRoman: bpaa
+SpecAlternates: bpaa, paa
+Units: consonant:ป=bp · vowel:า=aa
+Meaning: throw
+Rules: open-syllable
+
+pii | basic-6 | basic
+Thai: ปี
+Accepted: bpii, pii
+RuleRoman: bpii
+SpecAlternates: bpii, pii
+Units: consonant:ป=bp · vowel:ี=ii
+Meaning: year
+Rules: open-syllable
+
+bo | basic-7 | basic
+Thai: โบ
+Accepted: bo
+RuleRoman: bo
+SpecAlternates: bo
+Units: consonant:บ=b · vowel:โ-=o
+Meaning: bow (gesture; loan clip)
+Rules: vowel-before
+
+bpo | basic-7 | basic
+Thai: โป
+Accepted: bpo, po
+RuleRoman: bpo
+SpecAlternates: bpo, po
+Units: consonant:ป=bp · vowel:โ-=o
+Meaning: po (poster clip / brand form)
+Rules: vowel-before
+
+ko | basic-7 | basic
+Thai: โกะ
+Accepted: ko, go
+RuleRoman: ko
+SpecAlternates: ko, go
+Units: consonant:ก=k · rule:compound-short-o=o
+Meaning: corner notch (speech; cf. โก่ง)
+Rules: vowel-before, open-syllable, compound-short-o
+
+mo | basic-7 | basic
+Thai: โม
+Accepted: mo
+RuleRoman: mo
+SpecAlternates: mo
+Units: consonant:ม=m · vowel:โ-=o
+Meaning: mole (chemistry unit)
+Rules: vowel-before
+
+no | basic-7 | basic
+Thai: โน
+Accepted: no
+RuleRoman: no
+SpecAlternates: no
+Units: consonant:น=n · vowel:โ-=o
+Meaning: no (solfège note)
+Rules: vowel-before
+
+dte | basic-8 | basic
+Thai: เตะ
+Accepted: dte, te
+RuleRoman: dte
+SpecAlternates: dte, te
+Units: consonant:ต=dt · rule:compound-short-e=e
+Meaning: kick
+Rules: vowel-before, open-syllable, compound-short-e
+
+dtii | basic-8 | basic
+Thai: ตี
+Accepted: dtii, tii
+RuleRoman: dtii
+SpecAlternates: dtii, tii
+Units: consonant:ต=dt · vowel:ี=ii
+Meaning: hit
+Rules: open-syllable
+
+dto | basic-8 | basic
+Thai: โต
+Accepted: dto, to, too
+RuleRoman: dto
+SpecAlternates: dto, to, too
+Units: consonant:ต=dt · vowel:โ-=o
+Meaning: big / grown up
+Rules: vowel-before
+
+taa | basic-8 | basic
+Thai: ตา
+Accepted: dtaa, taa
+RuleRoman: dtaa
+SpecAlternates: dtaa, taa
+Units: consonant:ต=dt · vowel:า=aa
+Meaning: eye / grandfather
+Rules: open-syllable
+
+ki | basic-9 | basic
+Thai: กิโล
+Accepted: klio, kiloo, kilo, gilo
+RuleRoman: klio
+SpecAlternates: ki-loo, kilo, gilo
+Units: cluster:ก+ล=kl · vowel:ิ+โ-=io
+Meaning: kilo
+Rules: vowel-before, open-syllable
+
+laa | basic-9 | basic
+Thai: ลา
+Accepted: laa
+RuleRoman: laa
+SpecAlternates: laa
+Units: consonant:ล=l · vowel:า=aa
+Meaning: goodbye / take leave
+Rules: open-syllable
+
+le | basic-9 | basic
+Thai: เละ
+Accepted: le
+RuleRoman: le
+SpecAlternates: le
+Units: consonant:ล=l · rule:compound-short-e=e
+Meaning: messy / mushy
+Rules: vowel-before, open-syllable, compound-short-e
+
+lo | basic-9 | basic
+Thai: โละ
+Accepted: lo
+RuleRoman: lo
+SpecAlternates: lo
+Units: consonant:ล=l · rule:compound-short-o=o
+Meaning: clear out / throw away
+Rules: vowel-before, open-syllable, compound-short-o
+
+raa | basic-9 | basic
+Thai: รา
+Accepted: raa
+RuleRoman: raa
+SpecAlternates: raa
+Units: consonant:ร=r · vowel:า=aa
+Meaning: mildew / fungus
+Rules: open-syllable
+
+ngaa | basic-10 | basic
+Thai: งา
+Accepted: ngaa
+RuleRoman: ngaa
+SpecAlternates: ngaa
+Units: consonant:ง=ng · vowel:า=aa
+Meaning: sesame
+Rules: open-syllable
+
+bii | medium-1 | medium
+Thai: บาน
+Accepted: baan
+RuleRoman: baan
+SpecAlternates: baan
+Units: consonant:บ=b · vowel:า=aa · consonant:น:final=n
+Meaning: bloom / open (flower)
+Rules: final-consonant
+
+bpaak | medium-1 | medium
+Thai: ปาก
+Accepted: bpaak, paak
+RuleRoman: bpaak
+SpecAlternates: bpaak, paak
+Units: consonant:ป=bp · vowel:า=aa · consonant:ก:final=k
+Meaning: mouth
+Rules: final-consonant
+
+gin | medium-1 | medium
+Thai: กิน
+Accepted: kin, gin
+RuleRoman: kin
+SpecAlternates: gin, kin
+Units: consonant:ก=k · vowel:ิ=i · consonant:น:final=n
+Meaning: eat
+Rules: final-consonant
+
+haa | medium-1 | medium
+Thai: หา
+Accepted: haa
+RuleRoman: haa
+SpecAlternates: haa
+Units: consonant:ห=h · vowel:า=aa
+Meaning: find / search
+Rules: open-syllable
+
+khaa | medium-1 | medium
+Thai: คา
+Accepted: khaa
+RuleRoman: khaa
+SpecAlternates: khaa
+Units: consonant:ค=kh · vowel:า=aa
+Meaning: stuck / lodged
+Rules: open-syllable
+
+kon | medium-1 | medium
+Thai: โกน
+Accepted: kon, koon, gon
+RuleRoman: kon
+SpecAlternates: koon, kon, gon
+Units: consonant:ก=k · vowel:โ-=o · consonant:น:final=n
+Meaning: to shave
+Rules: vowel-before, final-consonant
+
+maak | medium-1 | medium
+Thai: มาก
+Accepted: maak
+RuleRoman: maak
+SpecAlternates: maak
+Units: consonant:ม=m · vowel:า=aa · consonant:ก:final=k
+Meaning: very / much
+Rules: final-consonant
+
+me | medium-1 | medium
+Thai: เมน
+Accepted: men
+RuleRoman: men
+SpecAlternates: men
+Units: consonant:ม=m · vowel:เ-=e · consonant:น:final=n
+Meaning: main (course) / menu clip
+Rules: vowel-before, final-consonant
+
+naan | medium-1 | medium
+Thai: นาน
+Accepted: naan
+RuleRoman: naan
+SpecAlternates: naan
+Units: consonant:น=n · vowel:า=aa · consonant:น:final=n
+Meaning: long (time)
+Rules: final-consonant
+
+phaa | medium-1 | medium
+Thai: พา
+Accepted: phaa
+RuleRoman: phaa
+SpecAlternates: phaa
+Units: consonant:พ=ph · vowel:า=aa
+Meaning: take / bring along
+Rules: open-syllable
+
+dtaak | medium-2 | medium
+Thai: ตาก
+Accepted: dtaak, taak
+RuleRoman: dtaak
+SpecAlternates: dtaak, taak
+Units: consonant:ต=dt · vowel:า=aa · consonant:ก:final=k
+Meaning: dry in the sun
+Rules: final-consonant
+
+jaa | medium-2 | medium
+Thai: จาน
+Accepted: jaan
+RuleRoman: jaan
+SpecAlternates: jaan
+Units: consonant:จ=j · vowel:า=aa · consonant:น:final=n
+Meaning: plate / dish
+Rules: final-consonant
+
+jaak | medium-2 | medium
+Thai: จาก
+Accepted: jaak
+RuleRoman: jaak
+SpecAlternates: jaak
+Units: consonant:จ=j · vowel:า=aa · consonant:ก:final=k
+Meaning: from
+Rules: final-consonant
+
+phaan | medium-2 | medium
+Thai: พาน
+Accepted: phaan
+RuleRoman: phaan
+SpecAlternates: phaan
+Units: consonant:พ=ph · vowel:า=aa · consonant:น:final=n
+Meaning: ceremonial tray
+Rules: final-consonant
+
+waa | medium-2 | medium
+Thai: วา
+Accepted: waa
+RuleRoman: waa
+SpecAlternates: waa
+Units: consonant:ว=w · vowel:า=aa
+Meaning: wa (Thai length unit ≈ 2m)
+Rules: open-syllable
+
+yaa | medium-2 | medium
+Thai: ยา
+Accepted: yaa
+RuleRoman: yaa
+SpecAlternates: yaa
+Units: consonant:ย=y · vowel:า=aa
+Meaning: medicine
+Rules: open-syllable
+
+chaa | medium-3 | medium
+Thai: ชา
+Accepted: chaa
+RuleRoman: chaa
+SpecAlternates: chaa
+Units: consonant:ช=ch · vowel:า=aa
+Meaning: tea
+Rules: open-syllable
+
+chaan | medium-3 | medium
+Thai: ชาน
+Accepted: chaan
+RuleRoman: chaan
+SpecAlternates: chaan
+Units: consonant:ช=ch · vowel:า=aa · consonant:น:final=n
+Meaning: veranda / platform
+Rules: final-consonant
+
+dii | medium-3 | medium
+Thai: ดี
+Accepted: dii
+RuleRoman: dii
+SpecAlternates: dii
+Units: consonant:ด=d · vowel:ี=ii
+Meaning: good
+Rules: open-syllable
+
+din | medium-3 | medium
+Thai: ดิน
+Accepted: din
+RuleRoman: din
+SpecAlternates: din
+Units: consonant:ด=d · vowel:ิ=i · consonant:น:final=n
+Meaning: soil / earth
+Rules: final-consonant
+
+duu | medium-3 | medium
+Thai: ดู
+Accepted: duu
+RuleRoman: duu
+SpecAlternates: duu
+Units: consonant:ด=d · vowel:ู=uu
+Meaning: look / watch
+Rules: open-syllable
+
+ngii | medium-3 | medium
+Thai: งู
+Accepted: nguu
+RuleRoman: nguu
+SpecAlternates: nguu
+Units: consonant:ง=ng · vowel:ู=uu
+Meaning: snake
+Rules: open-syllable
+
+thaa | medium-3 | medium
+Thai: ทา
+Accepted: thaa
+RuleRoman: thaa
+SpecAlternates: thaa
+Units: consonant:ท=th · vowel:า=aa
+Meaning: apply / spread (cream)
+Rules: open-syllable
+
+tho | medium-3 | medium
+Thai: โท
+Accepted: tho
+RuleRoman: tho
+SpecAlternates: tho
+Units: consonant:ท=th · vowel:โ-=o
+Meaning: anger (archaic) / tele-
+Rules: vowel-before
+
+aa_carrier | medium-4 | medium
+Thai: อา
+Accepted: aa
+RuleRoman: aa
+SpecAlternates: aa
+Units: consonant:อ=∅ · vowel:า=aa
+Meaning: uncle/aunt (younger sibling of a parent)
+Rules: open-syllable, vowel-carrier
+
+e_carrier | medium-4 | medium
+Thai: เอ
+Accepted: e
+RuleRoman: e
+SpecAlternates: e
+Units: consonant:อ=∅ · vowel:เ-=e
+Meaning: A (letter name) / eh
+Rules: vowel-before, vowel-carrier
+
+ii_carrier | medium-4 | medium
+Thai: อี
+Accepted: ii
+RuleRoman: ii
+SpecAlternates: ii
+Units: consonant:อ=∅ · vowel:ี=ii
+Meaning: this (colloquial determiner)
+Rules: open-syllable, vowel-carrier
+
+je | medium-4 | medium
+Thai: เจอ
+Accepted: joe, jeu, jer, je
+RuleRoman: joe
+SpecAlternates: joe, jeu, jer, je
+Units: cluster:จ+อ=j · rule:compound-oe=oe
+Meaning: meet / find
+Rules: vowel-before, vowel-carrier, compound-oe
+
+o_carrier | medium-4 | medium
+Thai: โอ
+Accepted: o
+RuleRoman: o
+SpecAlternates: o
+Units: consonant:อ=∅ · vowel:โ-=o
+Meaning: oh! (interjection)
+Rules: vowel-before, vowel-carrier
+
+re | medium-4 | medium
+Thai: เรอ
+Accepted: roe, reu, re
+RuleRoman: roe
+SpecAlternates: roe, reu, re
+Units: cluster:ร+อ=r · rule:compound-oe=oe
+Meaning: belch / burp
+Rules: vowel-before, vowel-carrier, compound-oe
+
+bae | medium-5 | medium
+Thai: แบก
+Accepted: baek
+RuleRoman: baek
+SpecAlternates: baek
+Units: consonant:บ=b · vowel:แ-=ae · consonant:ก:final=k
+Meaning: carry on the shoulder
+Rules: vowel-before, final-consonant
+
+gae | medium-5 | medium
+Thai: แก
+Accepted: kae, gae
+RuleRoman: kae
+SpecAlternates: gae, kae
+Units: consonant:ก=k · vowel:แ-=ae
+Meaning: you (informal)
+Rules: vowel-before
+
+lae | medium-5 | medium
+Thai: และ
+Accepted: laea, lae
+RuleRoman: laea
+SpecAlternates: lae
+Units: consonant:ล=l · vowel:แ-+ะ=aea
+Meaning: and
+Rules: vowel-before, open-syllable
+
+nae | medium-5 | medium
+Thai: แนน
+Accepted: naen
+RuleRoman: naen
+SpecAlternates: naen
+Units: consonant:น=n · vowel:แ-=ae · consonant:น:final=n
+Meaning: Nan (nickname) / tight fit clip
+Rules: vowel-before, final-consonant
+
+phae | medium-5 | medium
+Thai: แพ
+Accepted: phae
+RuleRoman: phae
+SpecAlternates: phae
+Units: consonant:พ=ph · vowel:แ-=ae
+Meaning: raft
+Rules: vowel-before
+
+nu | medium-6 | medium
+Thai: ลุง
+Accepted: lung
+RuleRoman: lung
+SpecAlternates: lung
+Units: consonant:ล=l · vowel:ุ=u · consonant:ง:final=ng
+Meaning: uncle (older brother of a parent)
+Rules: final-consonant
+
+pu | medium-6 | medium
+Thai: มุม
+Accepted: mum
+RuleRoman: mum
+SpecAlternates: mum
+Units: consonant:ม=m · vowel:ุ=u · consonant:ม:final=m
+Meaning: corner / angle
+Rules: final-consonant
+
+puu | medium-6 | medium
+Thai: ปู
+Accepted: bpuu, puu
+RuleRoman: bpuu
+SpecAlternates: bpuu, puu
+Units: consonant:ป=bp · vowel:ู=uu
+Meaning: crab
+Rules: open-syllable
+
+bai | medium-7 | medium
+Thai: ใบ
+Accepted: bai
+RuleRoman: bai
+SpecAlternates: bai
+Units: consonant:บ=b · vowel:ใ-=ai
+Meaning: leaf / sheet
+Rules: vowel-before
+
+bpai | medium-7 | medium
+Thai: ไป
+Accepted: bpai, pai
+RuleRoman: bpai
+SpecAlternates: bpai, pai
+Units: consonant:ป=bp · vowel:ไ-=ai
+Meaning: go
+Rules: vowel-before
+
+gai | medium-7 | medium
+Thai: ไก
+Accepted: kai, gai
+RuleRoman: kai
+SpecAlternates: gai, kai
+Units: consonant:ก=k · vowel:ไ-=ai
+Meaning: gai (clip of ไก่ chicken)
+Rules: vowel-before
+
+jai | medium-7 | medium
+Thai: ใจ
+Accepted: jai
+RuleRoman: jai
+SpecAlternates: jai
+Units: consonant:จ=j · vowel:ใ-=ai
+Meaning: heart / mind
+Rules: vowel-before
+
+ao | medium-8 | medium
+Thai: เอา
+Accepted: ao
+RuleRoman: ao
+SpecAlternates: ao
+Units: consonant:อ=∅ · vowel:เ-า=ao
+Meaning: take / want
+Rules: vowel-before, vowel-carrier
+
+bao | medium-8 | medium
+Thai: เบา
+Accepted: bao
+RuleRoman: bao
+SpecAlternates: bao
+Units: consonant:บ=b · vowel:เ-า=ao
+Meaning: light / gentle
+Rules: vowel-before
+
+mao | medium-8 | medium
+Thai: เมา
+Accepted: mao
+RuleRoman: mao
+SpecAlternates: mao
+Units: consonant:ม=m · vowel:เ-า=ao
+Meaning: drunk
+Rules: vowel-before
+
+nge | medium-8 | medium
+Thai: เงา
+Accepted: ngao, ngaao
+RuleRoman: ngao
+SpecAlternates: ngaao, ngao
+Units: consonant:ง=ng · vowel:เ-า=ao
+Meaning: shadow
+Rules: vowel-before
+
+rao | medium-8 | medium
+Thai: เรา
+Accepted: rao
+RuleRoman: rao
+SpecAlternates: rao
+Units: consonant:ร=r · vowel:เ-า=ao
+Meaning: we / us
+Rules: vowel-before
+
+bpeert | medium-9 | advanced
+Thai: เปิด
+Accepted: bpet, bpeert, pert, peert, pet
+RuleRoman: bpet
+SpecAlternates: bpeert, pert, peert
+Units: consonant:ป=bp · vowel:เ-=e · consonant:ด:final=t
+Meaning: open
+Rules: vowel-before, final-consonant, final-sound-map
+
+bpit | medium-9 | advanced
+Thai: ปิด
+Accepted: bpit, pit
+RuleRoman: bpit
+SpecAlternates: bpit, pit
+Units: consonant:ป=bp · vowel:ิ=i · consonant:ด:final=t
+Meaning: closed
+Rules: final-consonant, final-sound-map
+
+khii | medium-9 | medium
+Thai: คีบ
+Accepted: khiip, khip
+RuleRoman: khiip
+SpecAlternates: khiip, khip
+Units: consonant:ค=kh · vowel:ี=ii · consonant:บ:final=p
+Meaning: tongs / to pinch with tongs
+Rules: final-consonant, final-sound-map
+
+mu | medium-9 | medium
+Thai: มุก
+Accepted: muk
+RuleRoman: muk
+SpecAlternates: muk
+Units: consonant:ม=m · vowel:ุ=u · consonant:ก:final=k
+Meaning: joke / punchline / pearl
+Rules: final-consonant
+
+ni | medium-9 | medium
+Thai: นิล
+Accepted: nin, nil
+RuleRoman: nin
+SpecAlternates: nin, nil
+Units: consonant:น=n · vowel:ิ=i · consonant:ล:final=n
+Meaning: sapphire / dark blue gem
+Rules: final-consonant, final-sound-map
+
+we | medium-9 | medium
+Thai: เวร
+Accepted: wen, ween
+RuleRoman: wen
+SpecAlternates: ween, wen
+Units: consonant:ว=w · vowel:เ-=e · consonant:ร:final=n
+Meaning: duty shift / karma
+Rules: vowel-before, final-consonant, final-sound-map
+
+bon | medium-10 | medium
+Thai: บน
+Accepted: bon
+RuleRoman: bon
+SpecAlternates: bon
+Units: consonant:บ=b · rule:implicit-o=o · consonant:น:final=n
+Meaning: on / above
+Rules: final-consonant, implicit-o
+
+jon | medium-10 | medium
+Thai: จน
+Accepted: jon
+RuleRoman: jon
+SpecAlternates: jon
+Units: consonant:จ=j · rule:implicit-o=o · consonant:น:final=n
+Meaning: until / poor
+Rules: final-consonant, implicit-o
+
+khon | medium-10 | medium
+Thai: คน
+Accepted: khon
+RuleRoman: khon
+SpecAlternates: khon
+Units: consonant:ค=kh · rule:implicit-o=o · consonant:น:final=n
+Meaning: person
+Rules: final-consonant, implicit-o
+
+mong | medium-10 | medium
+Thai: มอง
+Accepted: mong
+RuleRoman: mong
+SpecAlternates: mong
+Units: consonant:ม=m · rule:implicit-o=o · consonant:ง:final=ng
+Meaning: look / watch
+Rules: final-consonant, implicit-o
+
+nom | medium-10 | medium
+Thai: นม
+Accepted: nom
+RuleRoman: nom
+SpecAlternates: nom
+Units: consonant:น=n · rule:implicit-o=o · consonant:ม:final=m
+Meaning: milk
+Rules: final-consonant, implicit-o
+
+pho | medium-10 | medium
+Thai: พอ
+Accepted: pho
+RuleRoman: pho
+SpecAlternates: pho
+Units: cluster:พ+อ=ph · rule:implicit-o=o
+Meaning: enough
+Rules: implicit-o, vowel-carrier
+
+ro | medium-10 | medium
+Thai: รอ
+Accepted: ro
+RuleRoman: ro
+SpecAlternates: ro
+Units: cluster:ร+อ=r · rule:implicit-o=o
+Meaning: wait
+Rules: implicit-o, vowel-carrier
+
+fuu | advanced-1 | advanced
+Thai: ฟู
+Accepted: fuu
+RuleRoman: fuu
+SpecAlternates: fuu
+Units: consonant:ฟ=f · vowel:ู=uu
+Meaning: fluffy / to rise (as dough)
+Rules: open-syllable
+
+khaa2 | advanced-1 | advanced
+Thai: ขา
+Accepted: khaa
+RuleRoman: khaa
+SpecAlternates: khaa
+Units: consonant:ข=kh · vowel:า=aa
+Meaning: leg
+Rules: open-syllable
+
+saa | advanced-1 | advanced
+Thai: ซา
+Accepted: saa
+RuleRoman: saa
+SpecAlternates: saa
+Units: consonant:ซ=s · vowel:า=aa
+Meaning: sa (loan syllable in names/foods)
+Rules: open-syllable
+
+sii | advanced-1 | advanced
+Thai: สี
+Accepted: sii
+RuleRoman: sii
+SpecAlternates: sii
+Units: consonant:ส=s · vowel:ี=ii
+Meaning: colour
+Rules: open-syllable
+
+sii_zee | advanced-1 | advanced
+Thai: ซี
+Accepted: sii
+RuleRoman: sii
+SpecAlternates: sii
+Units: consonant:ซ=s · vowel:ี=ii
+Meaning: C (letter) / series clip
+Rules: open-syllable
+
+faa2 | advanced-1b | advanced
+Thai: ฝา
+Accepted: faa
+RuleRoman: faa
+SpecAlternates: faa
+Units: consonant:ฝ=f · vowel:า=aa
+Meaning: lid / wall
+Rules: open-syllable
+
+fon | advanced-1b | advanced
+Thai: ฝน
+Accepted: fon
+RuleRoman: fon
+SpecAlternates: fon
+Units: consonant:ฝ=f · rule:implicit-o=o · consonant:น:final=n
+Meaning: rain
+Rules: final-consonant, implicit-o
+
+phaa2 | advanced-1b | advanced
+Thai: ผา
+Accepted: phaa
+RuleRoman: phaa
+SpecAlternates: phaa
+Units: consonant:ผ=ph · vowel:า=aa
+Meaning: cliff
+Rules: open-syllable
+
+phii | advanced-1b | advanced
+Thai: ผี
+Accepted: phii
+RuleRoman: phii
+SpecAlternates: phii
+Units: consonant:ผ=ph · vowel:ี=ii
+Meaning: ghost
+Rules: open-syllable
+
+thaa2 | advanced-1b | advanced
+Thai: ถาม
+Accepted: thaam
+RuleRoman: thaam
+SpecAlternates: thaam
+Units: consonant:ถ=th · vowel:า=aa · consonant:ม:final=m
+Meaning: ask
+Rules: final-consonant
+
+thung | advanced-1b | advanced
+Thai: ถุง
+Accepted: thung
+RuleRoman: thung
+SpecAlternates: thung
+Units: consonant:ถ=th · vowel:ุ=u · consonant:ง:final=ng
+Meaning: bag
+Rules: final-consonant
+
+faa | advanced-1c | advanced
+Thai: ฟัน
+Accepted: fan
+RuleRoman: fan
+SpecAlternates: fan
+Units: consonant:ฟ=f · vowel:ั=a · consonant:น:final=n
+Meaning: tooth
+Rules: final-consonant
+
+maa_dog | advanced-1c | advanced
+Thai: หมา
+Accepted: maa
+RuleRoman: maa
+SpecAlternates: maa
+Units: rule:leading-h=∅ · consonant:ม=m · vowel:า=aa
+Meaning: dog
+Rules: open-syllable, leading-h
+
+muu | advanced-1c | advanced
+Thai: หมู
+Accepted: muu
+RuleRoman: muu
+SpecAlternates: muu
+Units: rule:leading-h=∅ · consonant:ม=m · vowel:ู=uu
+Meaning: pig / pork
+Rules: open-syllable, leading-h
+
+ngi | advanced-1c | advanced
+Thai: หงิก
+Accepted: ngik
+RuleRoman: ngik
+SpecAlternates: ngik
+Units: rule:leading-h=∅ · consonant:ง=ng · vowel:ิ=i · consonant:ก:final=k
+Meaning: wrinkled / crumpled
+Rules: final-consonant, leading-h
+
+nuu | advanced-1c | advanced
+Thai: หนู
+Accepted: nuu
+RuleRoman: nuu
+SpecAlternates: nuu
+Units: rule:leading-h=∅ · consonant:น=n · vowel:ู=uu
+Meaning: mouse / rat; affectionate “you”
+Rules: open-syllable, leading-h
+
+ahaan | advanced-2 | advanced
+Thai: อาหาร
+Accepted: aahaan, ahaan
+RuleRoman: aahaan
+SpecAlternates: aa-haan, ahaan, aahaan
+Units: vowel:า=aa · consonant:ห=h · vowel:า:2=aa · consonant:ร:final=n
+Meaning: food
+Rules: vowel-carrier, final-consonant, final-sound-map, multi-syllable
+
+baan | advanced-2 | advanced
+Thai: บ้าน
+Accepted: baan
+RuleRoman: baan
+SpecAlternates: baan
+Units: consonant:บ=b · vowel:า=aa · consonant:น:final=n
+Meaning: house
+Rules: final-consonant, tone-mark
+
+che | advanced-2 | advanced
+Thai: เช้า
+Accepted: cheaa, chaao, chao
+RuleRoman: cheaa
+SpecAlternates: chaao, chao
+Units: consonant:ช=ch · vowel:เ-+า=eaa
+Meaning: morning
+Rules: vowel-before, tone-mark
+
+jing | advanced-2 | advanced
+Thai: จริง
+Accepted: jring, jing
+RuleRoman: jring
+SpecAlternates: jing
+Units: cluster:จ+ร=jr · vowel:ิ=i · consonant:ง:final=ng
+Meaning: true / really
+Rules: final-consonant
+
+khaa_tone | advanced-2 | advanced
+Thai: ข้า
+Accepted: khaa
+RuleRoman: khaa
+SpecAlternates: khaa
+Units: consonant:ข=kh · vowel:า=aa
+Meaning: I (archaic/servant) / kill
+Rules: tone-mark
+
+khaao | advanced-2 | advanced
+Thai: ข้าว
+Accepted: khaaw, khaao
+RuleRoman: khaaw
+SpecAlternates: khaao
+Units: consonant:ข=kh · vowel:า=aa · consonant:ว:final=w
+Meaning: rice
+Rules: tone-mark, final-consonant
+
+khao | advanced-2 | advanced
+Thai: เขา
+Accepted: khao
+RuleRoman: khao
+SpecAlternates: khao
+Units: cluster:ข+อ=kh · vowel:เ-า=ao
+Meaning: he/she / mountain
+Rules: vowel-before, vowel-carrier
+
+kho | advanced-2 | advanced
+Thai: ขอ
+Accepted: kho
+RuleRoman: kho
+SpecAlternates: kho
+Units: cluster:ข+อ=kh · rule:implicit-o=o
+Meaning: ask / request
+Rules: vowel-carrier, implicit-o
+
+khopkhun | advanced-2 | advanced
+Thai: ขอบคุณ
+Accepted: khopkhun
+RuleRoman: khopkhun
+SpecAlternates: khop-khun, khopkhun
+Units: consonant:ข=kh · rule:implicit-o=o · consonant:บ:final=p · consonant:ค=kh · vowel:ุ=u · consonant:น:final=n
+Meaning: thank you
+Rules: final-consonant, final-sound-map, multi-syllable, implicit-o, vowel-carrier
+
+klaang | advanced-2 | advanced
+Thai: กลาง
+Accepted: klaang, klang
+RuleRoman: klaang
+SpecAlternates: klaang, klang
+Units: cluster:ก+ล=kl · vowel:า=aa · consonant:ง:final=ng
+Meaning: middle
+Rules: final-consonant
+
+naam | advanced-2 | advanced
+Thai: น้ำ
+Accepted: namm, naam
+RuleRoman: namm
+SpecAlternates: naam
+Units: consonant:น=n · vowel:ำ=am · consonant:ม:final=m
+Meaning: water
+Rules: final-consonant, tone-mark, special-vowel
+
+nii | advanced-2 | advanced
+Thai: นี้
+Accepted: nii
+RuleRoman: nii
+SpecAlternates: nii
+Units: consonant:น=n · vowel:ี=ii
+Meaning: this
+Rules: open-syllable, tone-mark
+
+raan | advanced-2 | advanced
+Thai: ร้าน
+Accepted: raan
+RuleRoman: raan
+SpecAlternates: raan
+Units: consonant:ร=r · vowel:า=aa · consonant:น:final=n
+Meaning: shop
+Rules: final-consonant, tone-mark
+
+ron | advanced-2 | advanced
+Thai: ร้อน
+Accepted: ron
+RuleRoman: ron
+SpecAlternates: ron
+Units: consonant:ร=r · vowel:โ-=o · consonant:น:final=n
+Meaning: hot
+Rules: final-consonant, tone-mark, vowel-before
+
+sawasdee | advanced-2 | advanced
+Thai: สวัสดี
+Accepted: sawatdii, sawasdee
+RuleRoman: sawatdii
+SpecAlternates: sa-wat-dii, sawasdee, sawatdii
+Units: consonant:ส=s · vowel:a-open=a · consonant:ว=w · vowel:ั=a · consonant:ส:final=t · consonant:ด=d · vowel:ี=ii
+Meaning: hello
+Rules: multi-syllable, final-consonant, final-sound-map
+
+som | advanced-2 | advanced
+Thai: ส้ม
+Accepted: som
+RuleRoman: som
+SpecAlternates: som
+Units: consonant:ส=s · rule:implicit-o=o · consonant:ม:final=m
+Meaning: orange (fruit)
+Rules: final-consonant, tone-mark, implicit-o
+
+suay | advanced-2 | advanced
+Thai: สวย
+Accepted: swyuay, suay, suai
+RuleRoman: swyuay
+SpecAlternates: suay, suai
+Units: cluster:ส+ว+ย=swy · rule:w-vowel-ua=uay
+Meaning: beautiful
+Rules: w-vowel-ua
+
+bpong | advanced-3 | advanced
+Thai: โป่ง
+Accepted: bpong, pong
+RuleRoman: bpong
+SpecAlternates: bpong, pong
+Units: consonant:ป=bp · vowel:โ-=o · consonant:ง:final=ng
+Meaning: swollen / puffed
+Rules: vowel-before, final-consonant, tone-mark
+
+jo | advanced-3 | advanced
+Thai: โจ๊ก
+Accepted: jok, jook, joke
+RuleRoman: jok
+SpecAlternates: jook, joke
+Units: consonant:จ=j · vowel:โ-=o · consonant:ก:final=k
+Meaning: rice porridge / congee
+Rules: vowel-before, final-consonant, tone-mark
+
+kii | advanced-3 | advanced
+Thai: กี่
+Accepted: kii, gii
+RuleRoman: kii
+SpecAlternates: kii, gii
+Units: consonant:ก=k · vowel:ี=ii
+Meaning: how many
+Rules: open-syllable, tone-mark
+
+mae | advanced-3 | advanced
+Thai: แม่
+Accepted: mae
+RuleRoman: mae
+SpecAlternates: mae
+Units: consonant:ม=m · vowel:แ-=ae
+Meaning: mother
+Rules: vowel-before, tone-mark
+
+ngo | advanced-3 | advanced
+Thai: โง่
+Accepted: ngo, ngoo
+RuleRoman: ngo
+SpecAlternates: ngoo, ngo
+Units: consonant:ง=ng · vowel:โ-=o
+Meaning: foolish
+Rules: vowel-before, tone-mark
+
+tone_ek | advanced-3 | advanced
+Thai: ม่า
+Accepted: maa
+RuleRoman: maa
+SpecAlternates: maa
+Units: consonant:ม=m · vowel:า=aa
+Meaning: low-tone example (mai ek)
+Rules: tone-mark
+
+tone_tho | advanced-3 | advanced
+Thai: ม้า
+Accepted: maa
+RuleRoman: maa
+SpecAlternates: maa
+Units: consonant:ม=m · vowel:า=aa
+Meaning: horse (falling tone)
+Rules: tone-mark
+
+card_high | advanced-4 | advanced
+Thai: ส
+Accepted: s, high
+RuleRoman: s
+SpecAlternates: high
+Units: consonant:ส=s
+Meaning: high-class consonant (ส)
+Rules: consonant-class
+
+card_low | advanced-4 | advanced
+Thai: ค
+Accepted: kh, low
+RuleRoman: kh
+SpecAlternates: low
+Units: consonant:ค=kh
+Meaning: low-class consonant (ค)
+Rules: consonant-class
+
+card_mid | advanced-4 | advanced
+Thai: ก
+Accepted: k, mid, g
+RuleRoman: k
+SpecAlternates: mid
+Units: consonant:ก=k
+Meaning: mid-class consonant (ก)
+Rules: consonant-class
+
+fim | advanced-6 | advanced
+Thai: ฟิล์ม
+Accepted: fim, film
+RuleRoman: fim
+SpecAlternates: fim, film
+Units: consonant:ฟ=f · vowel:ิ=i · consonant:ม:final=m
+Meaning: film
+Rules: silent-mark, final-consonant
+
+mai | advanced-6 | advanced
+Thai: ไมล์
+Accepted: mlai, mai, mail
+RuleRoman: mlai
+SpecAlternates: mai, mail
+Units: cluster:ม+ล=ml · vowel:ไ-=ai
+Meaning: mile
+Rules: vowel-before, silent-mark
+
+silent_ex | advanced-6 | advanced
+Thai: เธอร์ม
+Accepted: thmoe, term
+RuleRoman: thmoe
+SpecAlternates: term
+Units: cluster:ท+อ+ม=thm · rule:compound-oe=oe
+Meaning: therm- (loan root; silent ์)
+Rules: vowel-before, vowel-carrier, compound-oe, silent-mark
+
+awk | advanced-7 | advanced
+Thai: ออก
+Accepted: ok, awk
+RuleRoman: ok
+SpecAlternates: awk, ok
+Units: consonant:อ=∅ · rule:implicit-o=o · consonant:ก:final=k
+Meaning: exit
+Rules: vowel-carrier, final-consonant, implicit-o
+
+bplaa | advanced-7 | advanced
+Thai: ปลา
+Accepted: bplaa, plaa
+RuleRoman: bplaa
+SpecAlternates: bplaa, plaa
+Units: cluster:ป+ล=bpl · vowel:า=aa
+Meaning: fish
+Rules: open-syllable
+
+gaafae | advanced-7 | advanced
+Thai: กาแฟ
+Accepted: kaafae, gaafae
+RuleRoman: kaafae
+SpecAlternates: gaafae, kaafae
+Units: consonant:ก=k · vowel:า=aa · consonant:ฟ=f · vowel:แ-=ae
+Meaning: coffee
+Rules: vowel-before, multi-syllable
+
+khao2 | advanced-7 | advanced
+Thai: เข้า
+Accepted: khe, khao
+RuleRoman: khe
+SpecAlternates: khao
+Units: cluster:ข+อ=kh · vowel:เ-=e
+Meaning: enter
+Rules: vowel-before, vowel-carrier, tone-mark
+
+maew | advanced-7 | advanced
+Thai: แมว
+Accepted: maew
+RuleRoman: maew
+SpecAlternates: maew
+Units: consonant:ม=m · vowel:แ-=ae · consonant:ว:final=w
+Meaning: cat
+Rules: vowel-before, final-consonant
+
+nakrian | advanced-7 | advanced
+Thai: นักเรียน
+Accepted: nakrian
+RuleRoman: nakrian
+SpecAlternates: nak-rian, nakrian
+Units: consonant:น=n · vowel:ั=a · consonant:ก:final=k · consonant:ร=r · vowel:เ-ีย=ia · consonant:น:final=n
+Meaning: student
+Rules: final-consonant, multi-syllable, vowel-before
+
+ne | advanced-7 | advanced
+Thai: เนย
+Accepted: nye, noei, neoy, ney
+RuleRoman: nye
+SpecAlternates: noei, neoy, ney
+Units: cluster:น+ย=ny · vowel:เ-=e
+Meaning: butter
+Rules: vowel-before
+
+phe | advanced-7 | advanced
+Thai: เพลิน
+Accepted: phloen, pleun
+RuleRoman: phloen
+SpecAlternates: phloen, pleun
+Units: cluster:พ+ล=phl · rule:compound-oe-i=oe · consonant:น:final=n
+Meaning: enjoy / be absorbed
+Rules: vowel-before, final-consonant, compound-oe-i
+
+roongraem | advanced-7 | advanced
+Thai: โรงแรม
+Accepted: roongraem
+RuleRoman: roongraem
+SpecAlternates: roong-raem, roongraem
+Units: consonant:ร=r · vowel:โ-=oo · consonant:ง:final=ng · consonant:ร:2=r · vowel:แ-=ae · consonant:ม:final=m
+Meaning: hotel
+Rules: vowel-before, final-consonant, multi-syllable
+
+roongrian | advanced-7 | advanced
+Thai: โรงเรียน
+Accepted: roongrian
+RuleRoman: roongrian
+SpecAlternates: roong-rian, roongrian
+Units: consonant:ร=r · vowel:โ-=oo · consonant:ง:final=ng · consonant:ร:2=r · vowel:เ-ีย=ia · consonant:น:final=n
+Meaning: school
+Rules: vowel-before, final-consonant, multi-syllable
+
+thanon | advanced-7 | advanced
+Thai: ถนน
+Accepted: thanon
+RuleRoman: thanon
+SpecAlternates: tha-non, thanon
+Units: consonant:ถ=th · vowel:a-open=a · consonant:น=n · rule:implicit-o=o · consonant:น:final=n
+Meaning: road
+Rules: final-consonant, implicit-o, multi-syllable
+
+thiang | advanced-7 | advanced
+Thai: เที่ยง
+Accepted: thyeiing, thiang
+RuleRoman: thyeiing
+SpecAlternates: thiang
+Units: cluster:ท+ย=thy · vowel:เ-+ี=eii · consonant:ง:final=ng
+Meaning: noon
+Rules: vowel-before, final-consonant
