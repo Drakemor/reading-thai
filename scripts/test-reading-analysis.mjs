@@ -8,12 +8,13 @@ import vm from 'vm';
 const root = new URL('..', import.meta.url);
 const dataCode = fs.readFileSync(new URL('js/data.js', root), 'utf8');
 const analysisCode = fs.readFileSync(new URL('js/reading-analysis.js', root), 'utf8');
+const wordSpecCode = fs.readFileSync(new URL('js/word-spec.js', root), 'utf8');
 
 const sandbox = { console, globalThis: null };
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
 vm.runInContext(
-  dataCode + '\n' + analysisCode + '\n' +
+  dataCode + '\n' + analysisCode + '\n' + wordSpecCode + '\n' +
   'globalThis.__RA = ReadingAnalysis;\n' +
   'globalThis.__WORDS = WORDS;\n',
   sandbox

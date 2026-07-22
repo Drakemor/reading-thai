@@ -432,10 +432,18 @@
     };
   }
 
+  /** Expected answers from reading rules (primary) plus any compiled alternates. */
+  function getExpectedRomans(word) {
+    const built = buildRomanFromUnits(getReadingUnits(word));
+    const fromWord = (word?.romanizations || []).map(normRoman).filter(Boolean);
+    const rulePrimary = normRoman(word?.ruleRoman || built);
+    return [...new Set([rulePrimary, built, ...fromWord].filter(Boolean))];
+  }
+
   function analyzeReadingAnswer(word, typed) {
     const units = getReadingUnits(word);
     const typedNorm = normRoman(typed);
-    const expectedNorms = (word?.romanizations || []).map(normRoman).filter(Boolean);
+    const expectedNorms = getExpectedRomans(word);
     const correct = expectedNorms.some(r => r === typedNorm);
 
     if (correct) {
@@ -449,7 +457,8 @@
     }
 
     const built = buildRomanFromUnits(units);
-    const candidates = [...new Set([...expectedNorms, built].filter(Boolean))];
+    const rulePrimary = normRoman(word?.ruleRoman || built);
+    const candidates = [...new Set([rulePrimary, built, ...expectedNorms].filter(Boolean))];
     const bestExpected = pickClosestExpected(candidates, typedNorm);
     const scored = scoreUnits(units, bestExpected, typedNorm);
     const summary = buildMistakeSummary(scored);
@@ -527,6 +536,7 @@
   global.ReadingAnalysis = {
     normRoman,
     getReadingUnits,
+    getExpectedRomans,
     analyzeReadingAnswer,
     letterSpotMeta,
     wordUsesLetterKey,

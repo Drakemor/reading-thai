@@ -10,8 +10,10 @@
     "smoke:logic": "node scripts/smoke-survival.mjs",
     "smoke:viewport": "node scripts/smoke-viewport-actions.mjs",
     "smoke:mobile": "node scripts/smoke-mobile-layout.mjs",
-    "test": "node scripts/test-reading-analysis.mjs",
-    "test:reading": "node scripts/test-reading-analysis.mjs"
+    "test": "node scripts/test-reading-analysis.mjs && node scripts/test-word-spec.mjs && node scripts/test-curriculum-order.mjs",
+    "test:reading": "node scripts/test-reading-analysis.mjs",
+    "test:words": "node scripts/test-word-spec.mjs",
+    "test:curriculum": "node scripts/test-curriculum-order.mjs"
   },
   "devDependencies": {
     "playwright": "^1.54.0",

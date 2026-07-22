@@ -8,6 +8,8 @@ import { pathToFileURL } from 'url';
 
 const root = new URL('..', import.meta.url);
 const dataCode = fs.readFileSync(new URL('js/data.js', root), 'utf8');
+const wordSpecCode = fs.readFileSync(new URL('js/word-spec.js', root), 'utf8');
+const readingCode = fs.readFileSync(new URL('js/reading-analysis.js', root), 'utf8');
 const appCode = fs.readFileSync(new URL('js/app.js', root), 'utf8');
 
 // Minimal stubs for browser bits referenced at load time
@@ -44,7 +46,8 @@ sandbox.globalThis = sandbox;
 
 vm.createContext(sandbox);
 vm.runInContext(
-  dataCode + '\n' + appCode.replace(/\napplyDemoFromQuery\(\);[\s\S]*$/, '\n') + `
+  dataCode + '\n' + readingCode + '\n' + wordSpecCode + '\n' +
+  appCode.replace(/\napplyDemoFromQuery\(\);[\s\S]*$/, '\n') + `
   globalThis.__TRQ = {
     WORDS, LESSONS, survivalPointsForWord, recordSurvivalScore, defaultState,
     getSurvivalWordPool, generateSurvivalQuestions, SURVIVAL_TOP_N, SURVIVAL_HEARTS,
